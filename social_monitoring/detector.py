@@ -54,6 +54,39 @@ class BrandProfile:
     aliases: tuple[str, ...] = ()
     industry: str | None = None
     official_apps: tuple[OfficialApp, ...] = ()
+    official_logo_asset_id: str | None = None
+
+    def validation_errors(self) -> tuple[str, ...]:
+        errors: list[str] = []
+        if not self.id.strip():
+            errors.append("Brand ID is required.")
+        if not self.name.strip():
+            errors.append("Brand name is required.")
+        seen_accounts: set[tuple[str, str]] = set()
+        for account in self.official_accounts:
+            key = (account.platform.strip().casefold(), account.handle.strip().lstrip("@").casefold())
+            if not all(key):
+                errors.append("Each official social account needs a platform and handle.")
+            elif key in seen_accounts:
+                errors.append("Duplicate official social account.")
+            seen_accounts.add(key)
+        seen_domains: set[str] = set()
+        for domain in self.official_domains:
+            normalized = _domain(domain)
+            if normalized is None:
+                errors.append(f"Invalid official domain: {domain}")
+            elif normalized in seen_domains:
+                errors.append(f"Duplicate official domain: {domain}")
+            seen_domains.add(normalized or domain)
+        seen_apps: set[tuple[str, str]] = set()
+        for app in self.official_apps:
+            key = (app.store.strip().casefold(), app.app_id.strip().casefold())
+            if not all(key) or not app.name.strip():
+                errors.append("Each official app needs a store, app ID, and name.")
+            elif key in seen_apps:
+                errors.append("Duplicate official app.")
+            seen_apps.add(key)
+        return tuple(errors)
 
 
 @dataclass(frozen=True)

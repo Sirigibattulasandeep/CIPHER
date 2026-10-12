@@ -49,7 +49,9 @@ flowchart LR
 social profiles/posts and mobile-app listings. `src/lib/domain-monitoring.ts`
 analyzes submitted URL strings and manually supplied page metadata. The scan
 APIs validate a selected shared Brand, calculate versioned risk breakdowns,
-and persist shared Findings server-side. Repeated scans update the matching
+and persist shared Findings server-side. The public import route assigns
+imported or demo provenance server-side; client records cannot claim connected
+source reliability. Repeated scans update the matching
 brand/source/entity record and preserve its status while merging evidence.
 The workspace imports JSON or loads simulated examples. The separate
 `/domains` workspace accepts one URL per line. Both show actual saved findings.

@@ -11,6 +11,7 @@
    logo-similarity evidence, including source URLs.
 4. Import a JSON array of candidate records and apply platform, source,
    severity, or search filters to the resulting findings.
-5. Explain that findings are screening leads for human investigation. No live
-   monitoring, store access, website verification, logo analysis, or persistent
-   investigation workflow is claimed by this prototype yet.
+5. Explain that findings are screening leads for human investigation. The web
+   workspace persists findings and status changes in its development JSON
+   adapter. No live monitoring, store access, website verification, or logo
+   analysis is connected by this demo.

@@ -7,18 +7,24 @@ import { analyzeAppCandidate, analyzeSocialCandidate, scanRecords, type AppCandi
 import { assessRisk } from '../src/lib/risk-scoring';
 import { analyzeDomainCandidate } from '../src/lib/domain-monitoring';
 import { aggregateExposure, severityCounts } from '../src/lib/dashboard-metrics';
+import { resolveImportedProvenance } from '../src/lib/import-provenance';
 
 const brand: Brand = {
   id: 'brand_northstar', organisationId: 'org_test', name: 'Northstar', aliases: ['North Star'],
   description: '', logoUrl: 'https://northstar.example/logo.png', industry: 'FINTECH', subcategory: '',
   websiteUrl: 'https://northstar.example', domains: ['northstar.example'],
-  socialProfiles: ['https://www.linkedin.com/company/northstar'], keywords: [], impersonationIndicators: [],
-  mobileApplications: [{ name: 'Northstar Banking', storeUrl: 'https://play.google.com/store/apps/details?id=com.northstar.bank', publisher: 'Northstar Labs', packageId: 'com.northstar.bank' }],
+  socialProfiles: [{ platform: 'LinkedIn', profileUrl: 'https://www.linkedin.com/company/northstar', handle: 'northstar', profileId: 'northstar', verificationSource: 'test fixture', status: 'ACTIVE' }], keywords: [], impersonationIndicators: [],
+  mobileApplications: [{ name: 'Northstar Banking', platform: 'ANDROID', storeUrl: 'https://play.google.com/store/apps/details?id=com.northstar.bank', publisher: 'Northstar Labs', packageId: 'com.northstar.bank', verificationSource: 'test fixture', status: 'ACTIVE' }], officialAssets: [],
   monitoringConfiguration: { enabled: true, modules: ['social', 'apps'], rules: [], frequency: 'daily' },
   createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
 describe('social monitoring', () => {
+  it('does not accept a client claim of a connected source', () => {
+    expect(resolveImportedProvenance('CONNECTED')).toEqual({ origin: 'IMPORTED', sourceReliability: 0.75 });
+    expect(resolveImportedProvenance('DEMO')).toEqual({ origin: 'DEMO', sourceReliability: 0.6 });
+  });
+
   it('excludes the configured official social profile from identity alerts', () => {
     const candidate: SocialCandidate = { platform: 'LinkedIn', handle: 'northstar', displayName: 'Northstar', profileUrl: 'https://www.linkedin.com/company/northstar', origin: 'IMPORTED' };
     expect(analyzeSocialCandidate(brand, candidate, '2026-10-12T00:00:00.000Z')).toBeNull();
@@ -46,7 +52,7 @@ describe('social monitoring', () => {
   });
 
   it('treats common Unicode confusables as a risk signal, not an official-account match', () => {
-    const homographBrand = { ...brand, socialProfiles: ['https://x.com/northstar'] };
+    const homographBrand = { ...brand, socialProfiles: [{ platform: 'X', profileUrl: 'https://x.com/northstar', handle: 'northstar', profileId: '', verificationSource: 'test fixture', status: 'ACTIVE' as const }] };
     const candidate: SocialCandidate = { platform: 'X', handle: 'nоrthstar', displayName: 'Northstar Support', bio: 'Official Northstar customer support.' };
     const finding = analyzeSocialCandidate(homographBrand, candidate, '2026-10-12T00:00:00.000Z');
     expect(finding).not.toBeNull();

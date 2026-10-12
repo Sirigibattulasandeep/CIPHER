@@ -11,9 +11,11 @@ The Social & Apps scanner accepts `POST /api/monitoring/scan` with
 `POST /api/monitoring/domains` with `{ brandId, source: 'DOMAIN' | 'WEBSITE',
 records }`. Both validate the selected brand, calculate findings on the server,
 and persist through the shared findings repository before returning success.
-Domain analysis is offline and makes no external requests. Origin labels
-(`CONNECTED`, `IMPORTED`, `DEMO`) are carried in evidence and detection
-indicators until the shared contract adds a dedicated origin field.
+Domain analysis is offline and makes no external requests. Public scan routes
+assign imported or demo provenance server-side; client records cannot claim
+`CONNECTED` provenance or increase source reliability. A future authorized
+connector must call analysis through a server-owned path to assign connected
+provenance. Origin is currently carried in evidence and detection indicators.
 
 Shared findings include optional `riskScoreBreakdown` entries
 (`category`, `indicator`, `contribution`, `reason`) and `scoringVersion`.
@@ -32,6 +34,7 @@ Brand endpoints are `GET /api/brands?q=`, `POST /api/brands`,
 `brandSchema`; successful create returns 201 and the brand, successful update
 returns 200, delete returns 204. Detection owners use `brandId` from the brand
 selector and never accept an organisation ID from the browser.
+`POST /api/brands/:id/assets` adds a user-provided official asset to a brand.
 
 With no `DATABASE_URL`, the development adapters persist brands, findings, and
 investigations to JSON files under `data/` (or `SENTRIX_DATA_DIR`). When

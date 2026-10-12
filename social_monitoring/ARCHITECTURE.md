@@ -1,59 +1,9 @@
-# Social & App Monitoring — prototype architecture
+# Social and app analysis library
 
-```mermaid
-flowchart LR
-    UI[Future SENTRIX monitoring workspace]
-    SOURCES[Authorized social and app-store connectors]
-    IMPORT[JSON imports]
-    DEMO[Clearly labeled simulated records]
-    BRAND[Brand profile\nname and aliases\nofficial handles and domains\nofficial app IDs, publishers and logo asset reference]
-    NORMALIZE[Normalize and validate records]
-    EXCLUDE[Compare exact configured official accounts and app IDs]
-    SOCIAL[Social profile and post indicators]
-    APP[App title, publisher, description, link and logo indicators]
-    FINDINGS[Explainable findings\nscore, severity, confidence, evidence and source]
-    SHARED[Person 1 shared Finding / RiskAssessment API]
-    STORE[Shared SENTRIX persistence]
-    INVESTIGATE[Shared investigation workflow]
+The Python package in this directory is a deterministic analysis prototype for supplied candidate records. It does not connect to social platforms or app stores, fetch URLs, or calculate logo similarity. Any logo/avatar similarity value must come from an explicitly identified upstream component.
 
-    SOURCES --> NORMALIZE
-    IMPORT --> NORMALIZE
-    DEMO --> NORMALIZE
-    BRAND --> EXCLUDE
-    NORMALIZE --> EXCLUDE
-    EXCLUDE --> SOCIAL
-    EXCLUDE --> APP
-    SOCIAL --> FINDINGS
-    APP --> FINDINGS
-    FINDINGS --> SHARED
-    SHARED --> STORE
-    STORE --> INVESTIGATE
-    UI --> BRAND
-    UI --> IMPORT
-    UI --> FINDINGS
-```
+The active SENTRIX web workflow is the Next.js workspace at `/monitoring`. It validates imported or demo records, analyzes them with `src/lib/social-monitoring.ts`, and saves results through the shared `Finding` API and development JSON adapter. New domain changes should target the shared contracts, not introduce a parallel Python persistence model.
 
-## Current implementation boundary
+Configured official social profiles and app package IDs suppress identity-impersonation signals for exact matches. They do not establish that every other signal on that account is safe. Name similarity, publisher mismatch, supplied logo similarity, and external domains are review indicators, not proof of fraud.
 
-Implemented in this branch: brand-profile records and validation, social and
-app candidate models, deterministic analysis, JSON parsing functions, demo
-records, evidence-linked findings, and in-memory filters. URL analysis parses
-provided links but makes no network requests. Logo similarity is accepted as
-an input from a separate image-analysis component; this module does not
-compute image similarity itself.
-
-Not implemented yet: platform/store connectors, upload UI, SENTRIX shared
-contracts, persistence, status updates, and the responsive monitoring
-workspace. The finding conversion point is `Finding` in `detector.py`; adapt
-that boundary when Person 1 publishes the shared contract. Do not persist this
-temporary model as a separate social-only database.
-
-## Official-asset exclusion
-
-Configured social accounts are matched by platform and normalized handle.
-Configured apps are matched by store and exact app/package ID. These exact
-matches suppress identity-impersonation signals. Other evidence, such as a
-suspicious link or scam-associated text, remains visible for human review.
-Name similarity, publisher mismatch, logo similarity, and external domains
-are review indicators; no score establishes that a profile or app is
-fraudulent.
+Uploaded records are treated as imported. The scan API does not accept client claims that a record came from a connected live source; demo fixtures receive a lower, server-assigned reliability value. No connected social or app-store source is currently implemented.
