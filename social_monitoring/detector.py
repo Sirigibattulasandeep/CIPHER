@@ -178,14 +178,14 @@ def _domain(url_or_domain: str) -> str | None:
         if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
             return None
         parsed.port  # Validate that any supplied port is numeric and in range.
-            host = parsed.hostname.rstrip(".").encode("idna").decode("ascii").casefold()
+        host = parsed.hostname.rstrip(".").encode("idna").decode("ascii").casefold()
     except (UnicodeError, ValueError):
         return None
-        labels = host.split(".")
-        if any(not label or len(label) > 63 or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", label)
-               for label in labels):
-            return None
-        return host
+    labels = host.split(".")
+    if any(not label or len(label) > 63 or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", label)
+           for label in labels):
+        return None
+    return host
 
 
 def _is_domain_or_subdomain(domain: str, official: str) -> bool:
