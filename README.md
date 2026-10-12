@@ -4,19 +4,18 @@
 
 ## Run locally
 
-Requirements: Node.js 20+ and npm. PostgreSQL is optional for local development.
+Requirements: Node.js 20+ and npm. The local PostgreSQL server is installed as an npm dependency and starts with the app.
 
 ```powershell
 npm ci
-Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Open `http://localhost:3000`. With no `DATABASE_URL`, the app uses a local JSON adapter and creates three example brand profiles the first time it reads brand data: Kampus.VC (EdTech, based on the challenge brief), Northstar Bank (fictional FinTech), and Cedar & Finch (fictional e-commerce). Only the latter two are fictional brands. Existing JSON files are preserved; to start with empty demo storage, stop the app and remove the local `data` directory yourself.
+Open `http://localhost:3000`. With no `DATABASE_URL`, `npm run dev` starts an embedded PostgreSQL server on `127.0.0.1:5432`, applies checked-in migrations, and seeds three example brands plus labeled simulated findings: Kampus.VC (EdTech, based on the challenge brief), Northstar Bank (fictional FinTech), and Cedar & Finch (fictional e-commerce). The database persists under `data/postgres`; local credentials are saved in ignored `.env.local`. The first run prints the generated login credentials. Stop the server with Ctrl+C; the database server stops with it.
 
-Set `SENTRIX_LOGIN_EMAIL`, `SENTRIX_LOGIN_PASSWORD`, and a random `SESSION_SECRET` (at least 32 characters) in `.env.local` before starting the app. The login form issues a signed, HTTP-only 12-hour session cookie; pages and API routes require a valid session, and the sidebar provides sign-out.
+You can set `SENTRIX_LOGIN_EMAIL`, `SENTRIX_LOGIN_PASSWORD`, and a random `SESSION_SECRET` (at least 32 characters) in `.env.local` to choose local credentials. Otherwise the app generates them on first run and stores them in `.env.local`. The login form issues a signed, HTTP-only 12-hour session cookie; pages and API routes require a valid session, and the sidebar provides sign-out.
 
-Set `SENTRIX_DATA_DIR` to choose another local data directory. The adapter stores brands, findings, and investigations there. It is a single-process development fallback, not a production database; run one app process when using JSON storage.
+Set `DATABASE_URL` in `.env.local` to use an existing PostgreSQL database instead of the embedded server. The app generates the Prisma client on startup; apply migrations and seed records with `npm run db:migrate` and `npm run db:seed`. `SENTRIX_DATA_DIR` selects the local JSON fallback data directory for environments that explicitly use the JSON adapter.
 
 ## PostgreSQL setup
 
