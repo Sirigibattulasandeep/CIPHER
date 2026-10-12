@@ -1,53 +1,13 @@
 # SENTRIX integration contract
 
-The canonical contracts are exported from `src/lib/contracts.ts`. Detection
-modules create findings through `POST /api/findings` using `Finding`: `source`
-is one of `SOCIAL`, `MOBILE_APP`, `WEBSITE`, or `DOMAIN`; `riskScore` and
-`confidence` are integers from 0–100. `PATCH /api/findings/:id` accepts a shared
-finding status. API failures use `{ error: { code, message, fields? } }`.
+The canonical contracts are exported from `src/lib/contracts.ts`. Detection modules should use `Finding` and `findingSchema` when adding their findings route: `source` is one of `SOCIAL`, `MOBILE_APP`, `WEBSITE`, or `DOMAIN`; `riskScore` and `confidence` are integers from 0–100. All API failures use `{ error: { code, message, fields? } }`.
 
-The Social & Apps scanner accepts `POST /api/monitoring/scan` with
-`{ brandId, kind: 'social' | 'apps', records }`. The domain analyzer accepts
-`POST /api/monitoring/domains` with `{ brandId, source: 'DOMAIN' | 'WEBSITE',
-records }`. Both validate the selected brand, calculate findings on the server,
-and persist through the shared findings repository before returning success.
-Domain analysis is offline and makes no external requests. Public scan routes
-assign imported or demo provenance server-side; client records cannot claim
-`CONNECTED` provenance or increase source reliability. A future authorized
-connector must call analysis through a server-owned path to assign connected
-provenance. Origin is currently carried in evidence and detection indicators.
+Brand endpoints are `GET /api/brands?q=&industry=&monitoring=&sort=name|updatedAt&direction=asc|desc&page=1&pageSize=20`, `POST /api/brands`, `GET/PATCH/DELETE /api/brands/:id`, and `POST /api/brands/:id/assets`. List responses are `{ items, total, page, pageSize, totalPages }`. POST/PATCH bodies must satisfy `brandSchema`; successful create returns 201 and the brand, successful update returns 200, delete returns 204. Official asset requests satisfy `officialAssetSchema`. Detection owners should use `brandId` from the brand selector and never accept an organisation ID from the browser. The current development adapter persists to `data/brands.json`; persisted records are validated on read and writes use temporary-file replacement. Malformed persisted data is reported as an error instead of being replaced with seed data. Production should configure `DATABASE_URL` and replace the adapter with Prisma repository methods.
 
-Shared findings include optional `riskScoreBreakdown` entries
-(`category`, `indicator`, `contribution`, `reason`) and `scoringVersion`.
-The current `sentrix-risk-v1` aggregation takes the strongest signal per
-category, sums independent categories, caps at 100, and uses severity bands
-LOW 0–34, MODERATE 35–64, HIGH 65–84, CRITICAL 85–100. Confidence is kept
-separate from risk score.
+Finding endpoints are `GET /api/findings?brandId=&status=&severity=&page=1&pageSize=20`, `POST /api/findings`, `GET /api/findings/:id`, `POST /api/findings/:id/evidence`, and `PATCH /api/findings/:id/status`. Finding list responses use `{ items, total, page, pageSize, totalPages }`; all list filters are applied within the server-resolved organisation. Finding persistence, evidence, and status-history behavior is exercised in `tests/integration.test.ts`.
 
-`POST /api/investigations` opens or returns one investigation per finding.
-`PATCH /api/investigations/:id` changes its workflow state, and
-`POST /api/investigations/:id/notes` appends a note. PostgreSQL deployments
-also record finding status changes in `StatusHistory`.
+Brand DNA utilities are exported from `src/lib/brand-dna.ts`. `matchBrandName`, `matchOfficialDomain`, `matchHandle`, and `matchApplication` return explainable matches only; a match is an indicator, not a fraud verdict. Domain comparison permits the official hostname and its subdomains, while rejecting suffix tricks such as `example.com.attacker.test`.
 
-Brand endpoints are `GET /api/brands?q=`, `POST /api/brands`,
-`GET/PATCH/DELETE /api/brands/:id`. POST/PATCH bodies must satisfy
-`brandSchema`; successful create returns 201 and the brand, successful update
-returns 200, delete returns 204. Detection owners use `brandId` from the brand
-selector and never accept an organisation ID from the browser.
-`POST /api/brands/:id/assets` adds a user-provided official asset to a brand.
+Brand input normalizes domains to lowercase hostnames and rejects malformed domains, duplicate aliases, duplicate domains, duplicate social handles, and duplicate application package identifiers within one profile. User-submitted social, app, and asset records remain `UNCONFIRMED`; the development adapter also forces `verified` assets to false. A brand with a linked finding is rejected with `409 BRAND_HAS_RELATIONSHIPS` rather than cascading deletion. Brands without linked findings may be explicitly deleted.
 
-With no `DATABASE_URL`, the development adapters persist brands, findings, and
-investigations to JSON files under `data/` (or `SENTRIX_DATA_DIR`). When
-`DATABASE_URL` is configured, repository methods use Prisma/PostgreSQL. The
-Prisma migration adds organization memberships, a composite tenant/brand
-finding constraint, normalized official-asset tables, source-run metadata,
-investigation records, and query indexes. The local auth context still returns
-the fixed `org_demo` user; integrate authenticated sessions and enforce
-membership roles before deploying this API to a multi-tenant environment.
-
-Organisation isolation is represented by `organisationId` on each tenant
-model. The server-only context helper in `src/lib/auth.ts` currently supplies
-`org_demo` for the local demo; replace it with the established session provider
-before production and pass its organisation ID into every repository query.
-Never expose database credentials or server-only environment variables to
-client components.
+Organisation isolation is represented by `organisationId` on every tenant model. Brand reads and writes are scoped to the server-resolved organisation context, and finding creation verifies that the referenced brand belongs to that organisation. The server-only context helper in `src/lib/auth.ts` currently supplies `org_demo` for the local demo; this is not authentication and does not establish a production user session. Replace it with the established session provider before production deployment and pass its organisation id into every repository query. Never expose database credentials or server-only environment variables to client components.

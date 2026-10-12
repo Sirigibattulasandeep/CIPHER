@@ -1,230 +1,43 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { Prisma } from '@prisma/client';
 import { brandSchema, officialAssetSchema, type Brand, type BrandInput } from './contracts';
-import { getDemoOrganisationContext } from './auth';
-import { prisma } from './prisma';
 
-const file = path.join(process.env.SENTRIX_DATA_DIR || path.join(process.cwd(), 'data'), 'brands.json');
-const useDatabase = Boolean(process.env.DATABASE_URL);
-
-type DatabaseBrand = Prisma.BrandGetPayload<{ include: { monitoringConfiguration: true; officialAssets: true } }>;
-
-function fromDatabase(row: DatabaseBrand): Brand {
-  const input = brandSchema.parse({ ...row,
-    description: row.description ?? '', logoUrl: row.logoUrl ?? '', subcategory: row.subcategory ?? '', websiteUrl: row.websiteUrl ?? '',
-    aliases: row.aliases, domains: row.domains, socialProfiles: row.socialProfiles,
-    keywords: row.keywords, impersonationIndicators: row.impersonationIndicators,
-    mobileApplications: row.mobileApplications,
-    officialAssets: row.officialAssets.map(asset => ({ ...asset, verificationSource: 'database' })),
-    monitoringConfiguration: row.monitoringConfiguration ?? undefined,
-  });
-  return { ...input, id: row.id, organisationId: row.organisationId,
-    createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
-}
-
-function normalize(value: string): string {
-  return value.normalize('NFKD').toLocaleLowerCase().replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]/gu, '');
-}
-
-function normalizedAssets(input: BrandInput) {
-  const social = input.socialProfiles.map(profile => {
-    const url = new URL(profile.profileUrl);
-    return { platform: profile.platform || url.hostname.toLocaleLowerCase().replace(/^www\./, ''), handle: profile.handle.replace(/^@/, ''), profileUrl: profile.profileUrl };
-  });
-  return {
-    brandAliases: input.aliases.filter(Boolean).map(value => ({ value, normalized: normalize(value) })).filter(value => value.normalized),
-    brandKeywords: input.keywords.filter(Boolean).map(value => ({ value, normalized: normalize(value) })).filter(value => value.normalized),
-    officialDomains: [...new Set(input.domains.map(value => value.toLocaleLowerCase().replace(/^https?:\/\//, '').split('/')[0].replace(/^www\./, '').replace(/\.$/, '')).filter(Boolean))].map(domain => ({ domain })),
-    officialSocialAccounts: social.filter(value => value.handle),
-    officialMobileApplications: input.mobileApplications.filter(value => value.packageId.trim()).map(value => ({
-      name: value.name, packageId: value.packageId.trim(), storeUrl: value.storeUrl || null, publisher: value.publisher || null,
-    })),
-  };
-}
-
-function databaseData(input: BrandInput): Prisma.BrandCreateInput {
-  const assets = normalizedAssets(input);
-  return {
-    name: input.name, organisation: { connect: { id: getDemoOrganisationContext().organisationId } },
-    aliases: input.aliases as Prisma.InputJsonValue, description: input.description || null, logoUrl: input.logoUrl || null,
-    industry: input.industry, subcategory: input.subcategory || null, websiteUrl: input.websiteUrl || null,
-    domains: input.domains as Prisma.InputJsonValue, socialProfiles: input.socialProfiles as Prisma.InputJsonValue,
-    keywords: input.keywords as Prisma.InputJsonValue, impersonationIndicators: input.impersonationIndicators as Prisma.InputJsonValue,
-    mobileApplications: input.mobileApplications as Prisma.InputJsonValue,
-    monitoringConfiguration: { create: input.monitoringConfiguration },
-    brandAliases: { create: assets.brandAliases }, brandKeywords: { create: assets.brandKeywords },
-    officialDomains: { create: assets.officialDomains }, officialSocialAccounts: { create: assets.officialSocialAccounts },
-    officialMobileApplications: { create: assets.officialMobileApplications },
-    officialAssets: { create: [
-      ...(input.logoUrl ? [{ type: 'LOGO', url: input.logoUrl, label: 'Configured brand logo' }] : []),
-      ...input.officialAssets.map(asset => ({ type: asset.type, url: asset.url, label: asset.label || null, verified: asset.verified })),
-    ] },
-  };
-}
-
-function parseStoredBrand(value: Record<string, unknown>): BrandInput {
-  const socialProfiles = Array.isArray(value.socialProfiles) ? value.socialProfiles.map(profile => {
-    if (typeof profile !== 'string') return profile;
-    try {
-      const url = new URL(profile);
-      const handle = url.pathname.split('/').filter(Boolean).at(-1)?.replace(/^@/, '') ?? '';
-      return { platform: url.hostname.replace(/^www\./, ''), profileUrl: profile, handle, profileId: '', verificationSource: 'legacy-import', status: 'UNCONFIRMED' };
-    } catch { return profile; }
-  }) : [];
-  const mobileApplications = Array.isArray(value.mobileApplications) ? value.mobileApplications.map(application =>
-    application && typeof application === 'object' ? { platform: 'OTHER', verificationSource: 'legacy-import', status: 'UNCONFIRMED', ...(application as Record<string, unknown>) } : application,
-  ) : [];
-  return brandSchema.parse({ ...value, socialProfiles, mobileApplications, officialAssets: value.officialAssets ?? [] });
-}
-
-function demoBrands(organisationId: string): Brand[] {
-  const now = new Date('2026-01-01T00:00:00.000Z').toISOString();
-  const inputs: Array<[string, BrandInput]> = [
-    ['brand_kampusvc', { name: 'Kampus.VC', aliases: ['Kampus VC'], description: 'Demo brand profile based on the company named in the SENTRIX challenge brief.', logoUrl: '', industry: 'EDTECH', subcategory: 'Venture studio and university ecosystem', websiteUrl: 'https://kampus.vc', domains: ['kampus.vc'], socialProfiles: [], keywords: ['Kampus', 'venture studio'], impersonationIndicators: ['official', 'support'], mobileApplications: [], officialAssets: [], monitoringConfiguration: { enabled: true, modules: ['social', 'web', 'apps'], rules: [], frequency: 'daily' } }],
-    ['brand_northstar', { name: 'Northstar Bank', aliases: ['Northstar'], description: 'Fictional fintech brand used only for deterministic demo scans.', logoUrl: '', industry: 'FINTECH', subcategory: 'Digital banking', websiteUrl: 'https://northstar-bank.example', domains: ['northstar-bank.example'], socialProfiles: [{ platform: 'X', profileUrl: 'https://x.com/northstarbank', handle: 'northstarbank', profileId: '', verificationSource: 'demo', status: 'ACTIVE' }], keywords: ['banking', 'account'], impersonationIndicators: ['support', 'login'], mobileApplications: [{ name: 'Northstar Mobile Banking', platform: 'ANDROID', storeUrl: '', publisher: 'Northstar Demo Bank', packageId: 'example.northstar.mobile', verificationSource: 'demo', status: 'ACTIVE' }], officialAssets: [], monitoringConfiguration: { enabled: true, modules: ['social', 'web', 'apps'], rules: [], frequency: 'daily' } }],
-    ['brand_cedarfinch', { name: 'Cedar & Finch', aliases: ['Cedar Finch'], description: 'Fictional e-commerce brand used only for deterministic demo scans.', logoUrl: '', industry: 'ECOMMERCE', subcategory: 'Retail', websiteUrl: 'https://cedarfinch.example', domains: ['cedarfinch.example'], socialProfiles: [{ platform: 'Instagram', profileUrl: 'https://www.instagram.com/cedarfinch', handle: 'cedarfinch', profileId: '', verificationSource: 'demo', status: 'ACTIVE' }], keywords: ['shop', 'orders'], impersonationIndicators: ['support', 'offers'], mobileApplications: [{ name: 'Cedar & Finch Shop', platform: 'ANDROID', storeUrl: '', publisher: 'Cedar Finch Demo', packageId: 'example.cedarfinch.shop', verificationSource: 'demo', status: 'ACTIVE' }], officialAssets: [], monitoringConfiguration: { enabled: true, modules: ['social', 'web', 'apps'], rules: [], frequency: 'daily' } }],
-  ];
-  return inputs.map(([id, input]) => ({ ...brandSchema.parse(input), id, organisationId, createdAt: now, updatedAt: now }));
-}
-
-async function read(): Promise<Brand[]> {
-  if (useDatabase) {
-    const { organisationId } = getDemoOrganisationContext();
-    const rows = await prisma.brand.findMany({ where: { organisationId }, include: { monitoringConfiguration: true, officialAssets: true }, orderBy: { name: 'asc' } });
-    return rows.map(fromDatabase);
-  }
+const file = path.join(process.env.SENTRIX_DATA_DIR || path.join(process.cwd(),'data'),'brands.json');
+const org = 'org_demo';
+async function read():Promise<Brand[]> {
   try {
-    const raw: unknown = JSON.parse(await fs.readFile(file, 'utf8'));
-    if (!Array.isArray(raw)) throw new Error('Brand data must be a JSON array.');
-    return raw.map(item => {
-      const value = item as Record<string, unknown>;
-      const parsed = parseStoredBrand(value);
-      if (typeof value.id !== 'string' || typeof value.organisationId !== 'string' || typeof value.createdAt !== 'string' || typeof value.updatedAt !== 'string') {
-        throw new Error('Brand data is missing required record metadata.');
-      }
-      return { ...parsed, id: value.id, organisationId: value.organisationId, createdAt: value.createdAt, updatedAt: value.updatedAt };
+    const saved:unknown=JSON.parse(await fs.readFile(file,'utf8'));
+    if(!Array.isArray(saved))throw new Error('INVALID_PERSISTED_DATA');
+    const parsed=saved.map((value)=>{
+      if(!value||typeof value!=='object')throw new Error('INVALID_PERSISTED_DATA');
+      const record=value as Partial<Brand>;
+      const input=brandSchema.safeParse(record);
+      if(!input.success||typeof record.id!=='string'||typeof record.organisationId!=='string'||typeof record.createdAt!=='string'||typeof record.updatedAt!=='string')throw new Error('INVALID_PERSISTED_DATA');
+      const officialAssets=Array.isArray(record.officialAssets)?record.officialAssets.map(asset=>({...asset,verified:false,verificationSource:'user-provided'})):[];
+      return {...input.data,...record,officialAssets} as Brand;
     });
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-    const { organisationId } = getDemoOrganisationContext();
-    const brands = demoBrands(organisationId);
-    await write(brands);
-    return brands;
+    return parsed;
+  } catch(error) {
+    if(error&&typeof error==='object'&&'code' in error&&(error as {code?:string}).code==='ENOENT') {
+      await fs.mkdir(path.dirname(file),{recursive:true});
+      const now=new Date().toISOString();
+      const seed:Brand[]=[['brand_acme','Acme Learning','EDTECH','example.edu'],['brand_meridian','Meridian Pay','FINTECH','meridian.example'],['brand_luma','Luma Market','ECOMMERCE','luma.example']].map(([id,name,industry,domain])=>({id,organisationId:org,name,aliases:[],description:`Seeded demo brand: ${name}`,logoUrl:'',industry:industry as Brand['industry'],subcategory:'',websiteUrl:'',domains:[domain],socialProfiles:[],keywords:[name.toLowerCase()],impersonationIndicators:['support','login'],mobileApplications:[],officialAssets:[],monitoringConfiguration:{enabled:true,modules:['social','web','apps'],rules:[],frequency:'daily'},createdAt:now,updatedAt:now}));
+      await write(seed);
+      return seed;
+    }
+    if(error instanceof SyntaxError)throw new Error('INVALID_PERSISTED_DATA');
+    throw error;
   }
 }
-
-async function write(brands: Brand[]): Promise<void> {
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  const temporary = `${file}.${randomUUID()}.tmp`;
-  await fs.writeFile(temporary, JSON.stringify(brands, null, 2), 'utf8');
-  await fs.rename(temporary, file);
-}
-
-export async function listBrands(query = ''): Promise<Brand[]> {
-  const { organisationId } = getDemoOrganisationContext();
-  const all = await read();
-  const normalizedQuery = query.toLocaleLowerCase();
-  return all.filter(brand => brand.organisationId === organisationId && (!normalizedQuery || [brand.name, ...brand.aliases, ...brand.domains]
-    .some(value => value.toLocaleLowerCase().includes(normalizedQuery))));
-}
-
-export async function getBrand(id: string): Promise<Brand | undefined> {
-  const { organisationId } = getDemoOrganisationContext();
-  if (useDatabase) {
-    const row = await prisma.brand.findFirst({ where: { id, organisationId }, include: { monitoringConfiguration: true, officialAssets: true } });
-    return row ? fromDatabase(row) : undefined;
-  }
-  return (await read()).find(brand => brand.id === id && brand.organisationId === organisationId);
-}
-
-export async function createBrand(input: BrandInput): Promise<Brand> {
-  const { organisationId } = getDemoOrganisationContext();
-  if (useDatabase) {
-    const created = await prisma.brand.create({ data: databaseData(brandSchema.parse(input)), include: { monitoringConfiguration: true, officialAssets: true } });
-    if (created.organisationId !== organisationId) throw new Error('Brand tenant mismatch after create.');
-    return fromDatabase(created);
-  }
-  const now = new Date().toISOString();
-  const brand: Brand = { ...brandSchema.parse(input), id: `brand_${randomUUID()}`, organisationId, createdAt: now, updatedAt: now };
-  await write([...(await read()), brand]);
-  return brand;
-}
-
-export async function updateBrand(id: string, input: BrandInput): Promise<Brand | undefined> {
-  const { organisationId } = getDemoOrganisationContext();
-  if (useDatabase) {
-    return prisma.$transaction(async transaction => {
-      const current = await transaction.brand.findFirst({ where: { id, organisationId } });
-      if (!current) return undefined;
-      const normalized = normalizedAssets(brandSchema.parse(input));
-      await transaction.brandAlias.deleteMany({ where: { brandId: id } });
-      await transaction.brandKeyword.deleteMany({ where: { brandId: id } });
-      await transaction.officialDomain.deleteMany({ where: { brandId: id } });
-      await transaction.officialSocialAccount.deleteMany({ where: { brandId: id } });
-      await transaction.officialMobileApplication.deleteMany({ where: { brandId: id } });
-      await transaction.officialAsset.deleteMany({ where: { brandId: id } });
-      await transaction.monitoringConfiguration.deleteMany({ where: { brandId: id } });
-      await transaction.brand.update({ where: { id }, data: {
-        aliases: input.aliases as Prisma.InputJsonValue, description: input.description || null,
-        logoUrl: input.logoUrl || null, industry: input.industry, subcategory: input.subcategory || null,
-        websiteUrl: input.websiteUrl || null, domains: input.domains as Prisma.InputJsonValue,
-        socialProfiles: input.socialProfiles as Prisma.InputJsonValue, keywords: input.keywords as Prisma.InputJsonValue,
-        impersonationIndicators: input.impersonationIndicators as Prisma.InputJsonValue,
-        mobileApplications: input.mobileApplications as Prisma.InputJsonValue,
-        brandAliases: { create: normalized.brandAliases }, brandKeywords: { create: normalized.brandKeywords },
-        officialDomains: { create: normalized.officialDomains }, officialSocialAccounts: { create: normalized.officialSocialAccounts },
-        officialMobileApplications: { create: normalized.officialMobileApplications },
-        monitoringConfiguration: { create: input.monitoringConfiguration },
-        officialAssets: { create: [
-          ...(input.logoUrl ? [{ type: 'LOGO', url: input.logoUrl, label: 'Configured brand logo' }] : []),
-          ...input.officialAssets.map(asset => ({ type: asset.type, url: asset.url, label: asset.label || null, verified: asset.verified })),
-        ] },
-      } });
-      const updated = await transaction.brand.findUniqueOrThrow({ where: { id }, include: { monitoringConfiguration: true, officialAssets: true } });
-      return fromDatabase(updated);
-    });
-  }
-  const all = await read();
-  const index = all.findIndex(brand => brand.id === id && brand.organisationId === organisationId);
-  if (index < 0) return undefined;
-  const updated = { ...all[index], ...brandSchema.parse(input), updatedAt: new Date().toISOString() };
-  all[index] = updated;
-  await write(all);
-  return updated;
-}
-
-export async function addOfficialAsset(brandId: string, input: unknown, organisationId: string) {
-  const parsed = officialAssetSchema.parse(input);
-  if (useDatabase) {
-    const brand = await prisma.brand.findFirst({ where: { id: brandId, organisationId } });
-    if (!brand) return undefined;
-    return prisma.officialAsset.create({ data: { brandId, type: parsed.type, url: parsed.url, label: parsed.label || null, verified: parsed.verified } });
-  }
-  const all = await read();
-  const index = all.findIndex(brand => brand.id === brandId);
-  if (index < 0) return undefined;
-  if (all[index].organisationId !== organisationId) throw new Error('FORBIDDEN_ORGANISATION');
-  const asset = { ...parsed, id: `asset_${randomUUID()}`, brandId, createdAt: new Date().toISOString() };
-  all[index] = { ...all[index], officialAssets: [...all[index].officialAssets, asset], updatedAt: new Date().toISOString() };
-  await write(all);
-  return asset;
-}
-
-export async function deleteBrand(id: string): Promise<boolean> {
-  const { organisationId } = getDemoOrganisationContext();
-  if (useDatabase) {
-    const brand = await prisma.brand.findFirst({ where: { id, organisationId } });
-    if (!brand) return false;
-    try { await prisma.brand.delete({ where: { id } }); return true; }
-    catch { return false; }
-  }
-  const all = await read();
-  const next = all.filter(brand => brand.id !== id || brand.organisationId !== organisationId);
-  if (next.length === all.length) return false;
-  await write(next);
-  return true;
-}
-
-/** Development-only JSON adapter. Production persistence must use the Prisma repository. */
+async function write(brands:Brand[]) { const temporary=`${file}.${process.pid}.${randomUUID()}.tmp`; await fs.mkdir(path.dirname(file),{recursive:true}); await fs.writeFile(temporary,JSON.stringify(brands,null,2),'utf8'); await fs.rename(temporary,file); }
+const sameIdentity=(left:string,right:string)=>left.trim().toLocaleLowerCase()===right.trim().toLocaleLowerCase();
+function sanitise(input:BrandInput):BrandInput{const officialAssets=input.officialAssets||[];const socialProfiles=input.socialProfiles||[];const mobileApplications=input.mobileApplications||[];return {...input,officialAssets:officialAssets.map(asset=>({...asset,verified:false,verificationSource:asset.verificationSource||'user-provided'})),socialProfiles:socialProfiles.map(profile=>({...profile,status:profile.status==='ACTIVE'?'UNCONFIRMED':profile.status})),mobileApplications:mobileApplications.map(application=>({...application,status:application.status==='ACTIVE'?'UNCONFIRMED':application.status}))};}
+function ensureUniqueBrand(all:Brand[],input:BrandInput,ignoreId?:string){const duplicate=all.find(brand=>brand.id!==ignoreId&&(sameIdentity(brand.name,input.name)||brand.aliases.some(alias=>sameIdentity(alias,input.name))||input.aliases.some(alias=>sameIdentity(alias,brand.name))));if(duplicate)throw new Error('DUPLICATE_BRAND');}
+export async function listBrands(q='',organisationId=org){ const all=await read(); return all.filter(b=>b.organisationId===organisationId&&(!q||[b.name,...b.aliases,...b.domains].some(v=>v.toLowerCase().includes(q.toLowerCase())))); }
+export async function queryBrands(options:{q?:string;industry?:string;monitoring?:string;sort?:'name'|'updatedAt';direction?:'asc'|'desc';page?:number;pageSize?:number},organisationId=org){ let items=await listBrands(options.q,organisationId); if(options.industry)items=items.filter(item=>item.industry===options.industry); if(options.monitoring)items=items.filter(item=>String(item.monitoringConfiguration.enabled)===options.monitoring); const direction=options.direction==='desc'?-1:1; items.sort((a,b)=>String(a[options.sort||'name']).localeCompare(String(b[options.sort||'name']))*direction); const page=Math.max(1,options.page||1),pageSize=Math.min(100,Math.max(1,options.pageSize||20)),total=items.length; return {items:items.slice((page-1)*pageSize,page*pageSize),total,page,pageSize,totalPages:Math.max(1,Math.ceil(total/pageSize))}; }
+export async function getBrand(id:string,organisationId=org){ return (await read()).find(b=>b.id===id&&b.organisationId===organisationId); }
+export async function createBrand(input:BrandInput,organisationId=org){ const all=await read(); const clean=sanitise(input); ensureUniqueBrand(all.filter(brand=>brand.organisationId===organisationId),clean); const now=new Date().toISOString(); const brand={...clean,id:`brand_${randomUUID()}`,organisationId,createdAt:now,updatedAt:now}; await write([...all,brand]); return brand; }
+export async function addOfficialAsset(brandId:string,input:unknown,organisationId:string){const all=await read();const index=all.findIndex(brand=>brand.id===brandId);if(index<0)return; if(all[index].organisationId!==organisationId)throw new Error('FORBIDDEN_ORGANISATION');const asset={...officialAssetSchema.parse(input),verified:false,verificationSource:"user-provided",id:`asset_${randomUUID()}`,brandId,createdAt:new Date().toISOString()};all[index].officialAssets.push(asset);all[index].updatedAt=new Date().toISOString();await write(all);return asset;}
+export async function updateBrand(id:string,input:BrandInput,organisationId=org){ const all=await read(); const index=all.findIndex(b=>b.id===id&&b.organisationId===organisationId); if(index<0)return; const clean=sanitise(input); ensureUniqueBrand(all.filter(brand=>brand.organisationId===organisationId),clean,id); const brand={...all[index],...clean,officialAssets:all[index].officialAssets,organisationId,updatedAt:new Date().toISOString()}; all[index]=brand; await write(all); return brand; }
+export async function deleteBrand(id:string,organisationId=org){ const all=await read(); const target=all.find(brand=>brand.id===id&&brand.organisationId===organisationId); if(!target)return false; const next=all.filter(b=>b.id!==id); let findings:Array<{brandId:string;organisationId?:string}>=[]; try { const saved:unknown=JSON.parse(await fs.readFile(path.join(path.dirname(file),'findings.json'),'utf8')); if(!Array.isArray(saved))throw new Error('INVALID_PERSISTED_DATA'); findings=saved as Array<{brandId:string;organisationId?:string}>; } catch(error) { if(error&&typeof error==='object'&&'code' in error&&(error as {code?:string}).code==='ENOENT')findings=[]; else if(error instanceof SyntaxError)throw new Error('INVALID_PERSISTED_DATA'); else throw error; } if(findings.some(finding=>finding.brandId===id&&(!finding.organisationId||finding.organisationId===organisationId)))throw new Error('BRAND_HAS_RELATIONSHIPS'); await write(next); return true; }

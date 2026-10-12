@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getDemoOrganisationContext } from '@/lib/auth';
+import { assertOrganisationRequest } from '@/lib/auth';
 import { addOfficialAsset } from '@/lib/store';
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   try {
-    const { organisationId } = getDemoOrganisationContext();
+    const { organisationId } = assertOrganisationRequest(req);
     const asset = await addOfficialAsset(params.id, await req.json(), organisationId);
     return asset
       ? NextResponse.json(asset, { status: 201 })
