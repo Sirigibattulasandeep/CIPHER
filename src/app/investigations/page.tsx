@@ -1,0 +1,1 @@
+export default function Investigations(){return <div className="p-6 md:p-10"><div className="eyebrow">Response workspace</div><h1 className="mt-2 text-3xl font-bold">Investigations</h1><div className="surface mt-8 p-12 text-center"><div className="text-lg font-semibold">No investigations yet</div><p className="mt-2 muted">Open a finding to start an investigation.</p></div></div>}
