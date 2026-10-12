@@ -8,9 +8,11 @@ finding status. API failures use `{ error: { code, message, fields? } }`.
 
 The Social & Apps scanner accepts `POST /api/monitoring/scan` with
 `{ brandId, kind: 'social' | 'apps', records }`. It returns shared `Finding`
-objects, which the workspace persists through `POST /api/findings`. Origin
-labels (`CONNECTED`, `IMPORTED`, `DEMO`) are carried in evidence and detection
-indicators until the shared contract adds a dedicated origin field.
+objects, which the workspace persists through `POST /api/findings`. The public
+scan route assigns `IMPORTED` or `DEMO` origin and reliability on the server;
+client records cannot claim `CONNECTED` provenance or raise their reliability.
+A future authorized connector must call the analysis layer through a
+server-owned path to assign `CONNECTED` provenance.
 
 Brand endpoints are `GET /api/brands?q=`, `POST /api/brands`,
 `GET/PATCH/DELETE /api/brands/:id`. POST/PATCH bodies must satisfy

@@ -148,11 +148,12 @@ function officialSocialMatches(brand: Brand, candidate: SocialCandidate): boolea
   const candidateHandle = normalize(candidate.handle.replace(/^@/, ''));
   const candidateUrl = candidate.profileUrl ? profileParts(candidate.profileUrl) : undefined;
   return brand.socialProfiles.some(profile => {
-    const official = profileParts(profile);
+    const official = profileParts(profile.profileUrl);
     if (!official) return false;
     const platformMatches = normalizedPlatform(candidate.platform) === official.platform;
     const urlMatches = candidateUrl?.platform === official.platform && normalize(candidateUrl.handle) === normalize(official.handle);
-    const handleMatches = platformMatches && candidateHandle === normalize(official.handle);
+    const configuredHandle = normalize(profile.handle.replace(/^@/, ''));
+    const handleMatches = platformMatches && candidateHandle === configuredHandle;
     return urlMatches || handleMatches;
   });
 }
@@ -244,7 +245,7 @@ export function analyzeSocialCandidate(brand: Brand, candidate: SocialCandidate,
   };
   const handle = candidate.handle.replace(/^@/, '');
   const officialMatch = officialSocialMatches(brand, candidate);
-  const officialAccounts = brand.socialProfiles.map(profileParts).filter((part): part is NonNullable<typeof part> => Boolean(part))
+  const officialAccounts = brand.socialProfiles.map(profile => profileParts(profile.profileUrl)).filter((part): part is NonNullable<typeof part> => Boolean(part))
     .filter(part => part.platform === normalizedPlatform(candidate.platform));
   const bestHandle = Math.max(0, ...officialAccounts.map(account => similarity(account.handle, handle)));
   if (!officialMatch && bestHandle >= 0.78) {

@@ -37,7 +37,8 @@ flowchart LR
 `src/lib/social-monitoring.ts` contains deterministic analysis for supplied
 social profiles/posts and mobile-app listings. `src/app/api/monitoring/scan`
 validates candidate records against a selected shared Brand and returns shared
-Findings tagged with their origin as connected/imported/demo. The responsive
+Findings. The public import route assigns imported or demo provenance on the
+server; it does not accept client claims of a connected source. The responsive
 workspace at `/monitoring` imports JSON or loads simulated examples, then saves
 the returned findings through `POST /api/findings`. The shared findings API
 uses `src/lib/findings-store.ts` as its development JSON adapter. The workspace
