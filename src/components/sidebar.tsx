@@ -7,6 +7,7 @@ const navigation = [
   { href: '/', label: 'Overview' },
   { href: '/brands', label: 'Brand profiles' },
   { href: '/monitoring', label: 'Social & Apps' },
+  { href: '/domains', label: 'Websites & domains' },
   { href: '/findings', label: 'Findings' },
   { href: '/investigations', label: 'Investigations' },
 ] as const;

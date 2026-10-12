@@ -1,4 +1,6 @@
 import type { Brand, Finding } from './contracts';
+import { assessRisk, type RiskSignal } from './risk-scoring';
+import { normalizeBrandText, normalizeLookalikeText } from './text-normalization';
 
 export type RecordOrigin = 'CONNECTED' | 'IMPORTED' | 'DEMO';
 
@@ -40,14 +42,7 @@ export type AppCandidate = {
   observedAt?: string;
 };
 
-type Signal = {
-  category: string;
-  indicator: string;
-  score: number;
-  summary: string;
-  detail: string;
-  sourceUrl?: string;
-};
+type Signal = RiskSignal & { sourceUrl?: string };
 
 const scamPatterns: Array<[string, RegExp]> = [
   ['payment_request', /\b(?:pay(?:ing)?|send)\s+(?:a\s+)?(?:processing|release|verification)\s+fee\b/i],
@@ -61,18 +56,14 @@ const officialClaims = /\b(?:official|authorized|authorised|verified partner|bra
 const promoTerms = /\b(?:giveaway|winner|free gift|limited time offer|claim your reward|prize)\b/i;
 const stopWords = new Set(['the', 'and', 'for', 'with', 'from', 'your', 'our', 'app', 'mobile', 'official']);
 
-function normalize(value: string): string {
-  return value.normalize('NFKD').toLocaleLowerCase().replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]/gu, '');
-}
-
 function words(value: string): string[] {
   return value.toLocaleLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
 }
 
 /** Optimal-string-alignment distance includes adjacent character transpositions. */
 function similarity(leftValue: string, rightValue: string): number {
-  const left = Array.from(normalize(leftValue));
-  const right = Array.from(normalize(rightValue));
+  const left = Array.from(normalizeLookalikeText(leftValue));
+  const right = Array.from(normalizeLookalikeText(rightValue));
   if (!left.length || !right.length) return 0;
   const table = Array.from({ length: left.length + 1 }, (_, i) => {
     const row = Array.from({ length: right.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0));
@@ -90,11 +81,11 @@ function similarity(leftValue: string, rightValue: string): number {
   return 1 - table[left.length][right.length] / Math.max(left.length, right.length);
 }
 
-function safeDomain(value: string): string | undefined {
+export function safeDomain(value: string): string | undefined {
   try {
     const url = new URL(value.includes('://') ? value : `https://${value}`);
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return undefined;
-    const host = url.hostname.toLocaleLowerCase().replace(/\.$/, '');
+    const host = url.hostname.toLocaleLowerCase().replace(/\.$/, '').replace(/^www\./, '');
     if (!host || host.split('.').some(label => !label || label.length > 63 || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label))) return undefined;
     return host;
   } catch {
@@ -145,15 +136,14 @@ function profileParts(value: string): { platform: string; handle: string } | und
 }
 
 function officialSocialMatches(brand: Brand, candidate: SocialCandidate): boolean {
-  const candidateHandle = normalize(candidate.handle.replace(/^@/, ''));
+  const candidateHandle = normalizeBrandText(candidate.handle.replace(/^@/, ''));
   const candidateUrl = candidate.profileUrl ? profileParts(candidate.profileUrl) : undefined;
   return brand.socialProfiles.some(profile => {
     const official = profileParts(profile.profileUrl);
     if (!official) return false;
     const platformMatches = normalizedPlatform(candidate.platform) === official.platform;
-    const urlMatches = candidateUrl?.platform === official.platform && normalize(candidateUrl.handle) === normalize(official.handle);
-    const configuredHandle = normalize(profile.handle.replace(/^@/, ''));
-    const handleMatches = platformMatches && candidateHandle === configuredHandle;
+    const urlMatches = candidateUrl?.platform === official.platform && normalizeBrandText(candidateUrl.handle) === normalizeBrandText(official.handle);
+    const handleMatches = platformMatches && candidateHandle === normalizeBrandText(profile.handle.replace(/^@/, ''));
     return urlMatches || handleMatches;
   });
 }
@@ -162,13 +152,13 @@ function brandNames(brand: Brand): string[] {
   return [brand.name, ...brand.aliases].filter(Boolean);
 }
 
-function domainsFor(brand: Brand): string[] {
+export function domainsFor(brand: Brand): string[] {
   const domains = [...brand.domains];
   if (brand.websiteUrl) domains.push(brand.websiteUrl);
   return [...new Set(domains.map(safeDomain).filter((value): value is string => Boolean(value)))];
 }
 
-function isOfficialDomain(host: string, official: string): boolean {
+export function isOfficialDomain(host: string, official: string): boolean {
   return host === official || host.endsWith(`.${official}`);
 }
 
@@ -186,13 +176,6 @@ function sourceOrigin(origin: RecordOrigin | undefined): RecordOrigin {
   return origin ?? 'IMPORTED';
 }
 
-function severityFor(score: number, categories: number): Finding['severity'] {
-  if (score >= 85 && categories >= 4) return 'CRITICAL';
-  if (score >= 70 && categories >= 3) return 'HIGH';
-  if (score >= 40 && categories >= 2) return 'MODERATE';
-  return 'LOW';
-}
-
 function findingFromSignals(args: {
   brand: Brand;
   source: Finding['source'];
@@ -205,11 +188,9 @@ function findingFromSignals(args: {
   detectedAt?: string;
   observedAt?: string;
 }): Finding {
-  const categoryScores = new Map<string, number>();
-  for (const signal of args.signals) categoryScores.set(signal.category, Math.max(categoryScores.get(signal.category) ?? 0, signal.score));
-  const categories = [...categoryScores.keys()];
-  const riskScore = Math.min(100, [...categoryScores.values()].reduce((sum, score) => sum + score, 0));
-  const severity = severityFor(riskScore, categories.length);
+  const assessment = assessRisk(args.signals);
+  const categories = assessment.breakdown.map(item => item.category);
+  const { score: riskScore, severity } = assessment;
   const sourceReliability = Math.max(0, Math.min(1, args.reliability));
   const confidence = Math.round(sourceReliability * (0.35 + 0.65 * Math.min(1, categories.length / 3)) * (0.5 + 0.5 * args.completeness) * 100);
   const now = args.detectedAt ?? new Date().toISOString();
@@ -232,6 +213,8 @@ function findingFromSignals(args: {
     riskScore,
     severity,
     confidence,
+    riskScoreBreakdown: assessment.breakdown,
+    scoringVersion: assessment.scoringVersion,
     status: 'NEW',
     createdAt: now,
     updatedAt: now,
@@ -259,8 +242,8 @@ export function analyzeSocialCandidate(brand: Brand, candidate: SocialCandidate,
       `Best configured brand-name similarity is ${Math.round(nameSimilarity * 100)}%.`, candidate.profileUrl);
   }
   const combined = `${candidate.displayName ?? ''} ${candidate.bio ?? ''}`;
-  const normalizedCombined = normalize(combined);
-  const hasBrand = names.some(name => normalize(name) && normalizedCombined.includes(normalize(name)));
+  const normalizedCombined = normalizeLookalikeText(combined);
+  const hasBrand = names.some(name => normalizeLookalikeText(name) && normalizedCombined.includes(normalizeLookalikeText(name)));
   if (!officialMatch && hasBrand && supportTerms.test(combined)) {
     add('affiliation', 'support_language', 15, 'Brand reference appears with support language',
       'The profile name or biography combines the brand with support-style wording.', candidate.profileUrl);
@@ -350,8 +333,8 @@ export function analyzeAppCandidate(brand: Brand, candidate: AppCandidate, detec
   const referenceNames = configuredNames.length ? configuredNames : brandNames(brand);
   const scoredNames = referenceNames.map(name => ({ name, score: nameExpansionSimilarity(name, candidate.name) })).sort((a, b) => b.score - a.score);
   const best = scoredNames[0] ?? { name: brand.name, score: 0 };
-  const normalizedName = normalize(candidate.name);
-  const hasBrand = brandNames(brand).some(name => normalize(name) && normalizedName.includes(normalize(name)));
+  const normalizedName = normalizeLookalikeText(candidate.name);
+  const hasBrand = brandNames(brand).some(name => normalizeLookalikeText(name) && normalizedName.includes(normalizeLookalikeText(name)));
   if (best.score >= 0.84) add('identity', 'app_name_similarity', 22, 'App name resembles a configured brand app',
     `Similarity to “${best.name}” is ${Math.round(best.score * 100)}%; character swaps, spacing, and added words are considered.`, candidate.storeUrl);
   else if (hasBrand) add('identity', 'brand_name_reference', 10, 'App title contains a brand name',
@@ -361,7 +344,7 @@ export function analyzeAppCandidate(brand: Brand, candidate: AppCandidate, detec
 
   const matchingOfficialApps = brand.mobileApplications.filter(app => app.name && nameExpansionSimilarity(app.name, candidate.name) >= 0.7);
   const expectedPublishers = [...new Set(matchingOfficialApps.map(app => app.publisher).filter(Boolean))];
-  if (candidate.publisher?.trim() && expectedPublishers.length && !expectedPublishers.some(publisher => normalize(publisher) === normalize(candidate.publisher ?? ''))) {
+  if (candidate.publisher?.trim() && expectedPublishers.length && !expectedPublishers.some(publisher => normalizeBrandText(publisher) === normalizeBrandText(candidate.publisher ?? ''))) {
     add('publisher', 'publisher_mismatch', 24, 'Similar app lists a different publisher',
       `Observed publisher “${candidate.publisher}”; configured publisher: ${expectedPublishers.join(', ')}.`, candidate.storeUrl);
   }
