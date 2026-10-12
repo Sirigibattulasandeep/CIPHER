@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { assertOrganisationRequest } from '@/lib/auth';
+import { getDemoOrganisationContext } from '@/lib/auth';
 import { addOfficialAsset } from '@/lib/store';
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
-    const { organisationId } = assertOrganisationRequest(req);
-    const asset = await addOfficialAsset(params.id, await req.json(), organisationId);
+    const { organisationId } = getDemoOrganisationContext();
+    const asset = await addOfficialAsset(id, await req.json(), organisationId);
     return asset
       ? NextResponse.json(asset, { status: 201 })
       : NextResponse.json({ error: { code: 'NOT_FOUND', message: 'Brand not found' } }, { status: 404 });

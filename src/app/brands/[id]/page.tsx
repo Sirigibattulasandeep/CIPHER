@@ -3,8 +3,11 @@ import { notFound } from 'next/navigation';
 import { BrandActions } from '@/components/brand-actions';
 import { getBrand } from '@/lib/store';
 
-export default async function BrandDetail({ params }: { params: { id: string } }) {
-  const brand = await getBrand(params.id);
+export const dynamic = 'force-dynamic';
+
+export default async function BrandDetail({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const brand = await getBrand(id);
   if (!brand) notFound();
   return <div className="p-6 md:p-10">
     <Link href="/brands" className="text-sm text-cyan">← All brands</Link>
