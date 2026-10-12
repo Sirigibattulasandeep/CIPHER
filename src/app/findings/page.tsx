@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { listFindings } from '@/lib/findings-store';
 
+export const dynamic = 'force-dynamic';
+
 const severityClass: Record<string, string> = { CRITICAL: 'score-critical', HIGH: 'score-high', MODERATE: 'score-moderate', LOW: 'score-low' };
 const sourceLabel: Record<string, string> = { SOCIAL: 'Social', MOBILE_APP: 'App listing', DOMAIN: 'Domain', WEBSITE: 'Website' };
 

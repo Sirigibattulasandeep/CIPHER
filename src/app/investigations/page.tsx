@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { listFindings } from '@/lib/findings-store';
 import { listInvestigations } from '@/lib/investigations-store';
 
+export const dynamic = 'force-dynamic';
+
 function sourceHref(source: string, brandId: string) {
   const page = source === 'DOMAIN' || source === 'WEBSITE' ? '/domains' : '/monitoring';
   return `${page}?brandId=${encodeURIComponent(brandId)}`;

@@ -1,6 +1,12 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #08111f;
+  --color-panel: #101c2d;
+  --color-line: #22334a;
+  --color-cyan: #57d9e6;
+  --color-teal: #25b9a4;
+}
 
 :root { color-scheme: dark; }
 * { box-sizing: border-box; }

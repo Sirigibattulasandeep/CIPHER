@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { listBrands } from '@/lib/store';
 
-export default async function BrandsPage({ searchParams }: { searchParams: { q?: string } }) {
-  const query = searchParams.q?.trim() ?? '';
+export const dynamic = 'force-dynamic';
+
+export default async function BrandsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const query = (await searchParams).q?.trim() ?? '';
   const brands = await listBrands(query);
   const monitored = brands.filter(brand => brand.monitoringConfiguration.enabled).length;
 

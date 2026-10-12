@@ -38,6 +38,14 @@ function runPrisma(...args) {
   if (result.status !== 0) throw new Error(`Prisma ${args.join(' ')} failed with exit code ${result.status ?? 'unknown'}.`);
 }
 
+function isEmbeddedDatabaseUrl(value) {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return url.username === 'sentrix_local' && ['127.0.0.1', 'localhost'].includes(url.hostname) && url.pathname === '/sentrix';
+  } catch { return false; }
+}
+
 async function prepareLocalPostgres() {
   const generated = {};
   const shouldReportLogin = !process.env.SENTRIX_LOGIN_PASSWORD || process.env.SENTRIX_LOGIN_PASSWORD === 'change-this-password';
@@ -55,7 +63,6 @@ async function prepareLocalPostgres() {
   const databaseUrl = `postgresql://${dbUser}:${dbPassword}@127.0.0.1:${dbPort}/${dbName}?schema=public`;
   if (!process.env.SENTRIX_LOCAL_DB_PASSWORD) generated.SENTRIX_LOCAL_DB_PASSWORD = dbPassword;
   generated.DATABASE_URL = databaseUrl;
-  generated.SENTRIX_USE_EMBEDDED_DB = 'true';
   if (!process.env.SENTRIX_LOGIN_EMAIL) generated.SENTRIX_LOGIN_EMAIL = loginEmail;
   if (loginPassword !== process.env.SENTRIX_LOGIN_PASSWORD) generated.SENTRIX_LOGIN_PASSWORD = loginPassword;
   if (sessionSecret !== process.env.SESSION_SECRET) generated.SESSION_SECRET = sessionSecret;
@@ -105,9 +112,7 @@ async function prepareLocalPostgres() {
 
 async function main() {
   let localDatabase;
-  const useEmbeddedDatabase = process.env.SENTRIX_USE_EMBEDDED_DB === 'true'
-    || process.env.DATABASE_URL?.startsWith('postgresql://sentrix_local:')
-    || !process.env.DATABASE_URL;
+  const useEmbeddedDatabase = !process.env.DATABASE_URL || isEmbeddedDatabaseUrl(process.env.DATABASE_URL);
   if (useEmbeddedDatabase) localDatabase = await prepareLocalPostgres();
   else runPrisma('generate');
 
@@ -118,7 +123,9 @@ async function main() {
   }
 
   const nextCli = path.join(root, 'node_modules', 'next', 'dist', 'bin', 'next');
-  const next = spawn(process.execPath, [nextCli, 'dev', ...process.argv.slice(2)], { cwd: root, env: process.env, stdio: 'inherit' });
+  const nextCommand = ['build', 'start'].includes(process.argv[2]) ? process.argv[2] : 'dev';
+  const nextArgs = nextCommand === 'dev' ? process.argv.slice(2) : process.argv.slice(3);
+  const next = spawn(process.execPath, [nextCli, nextCommand, ...nextArgs], { cwd: root, env: process.env, stdio: 'inherit' });
   const shutdown = signal => { if (next.exitCode === null) next.kill(signal); };
   process.once('SIGINT', () => shutdown('SIGINT'));
   process.once('SIGTERM', () => shutdown('SIGTERM'));

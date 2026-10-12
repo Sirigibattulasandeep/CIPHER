@@ -5,6 +5,8 @@ import { listBrands } from '@/lib/store';
 import { listInvestigations } from '@/lib/investigations-store';
 import { aggregateExposure, severityOrder } from '@/lib/dashboard-metrics';
 
+export const dynamic = 'force-dynamic';
+
 const severityNames: Record<Severity, string> = { CRITICAL: 'Critical', HIGH: 'High', MODERATE: 'Moderate', LOW: 'Low' };
 const severityColors: Record<Severity, string> = { CRITICAL: '#fb7185', HIGH: '#fb923c', MODERATE: '#facc15', LOW: '#2dd4bf' };
 const sourceNames: Record<Finding['source'], string> = { SOCIAL: 'Social', MOBILE_APP: 'Apps', DOMAIN: 'Domains', WEBSITE: 'Websites' };

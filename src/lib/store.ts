@@ -12,13 +12,9 @@ const useDatabase = Boolean(process.env.DATABASE_URL);
 type DatabaseBrand = Prisma.BrandGetPayload<{ include: { monitoringConfiguration: true; officialAssets: true } }>;
 
 function fromDatabase(row: DatabaseBrand): Brand {
-  const input = brandSchema.parse({ ...row,
+  const input = parseStoredBrand({ ...row,
     description: row.description ?? '', logoUrl: row.logoUrl ?? '', subcategory: row.subcategory ?? '', websiteUrl: row.websiteUrl ?? '',
-    aliases: row.aliases, domains: row.domains, socialProfiles: row.socialProfiles,
-    keywords: row.keywords, impersonationIndicators: row.impersonationIndicators,
-    mobileApplications: row.mobileApplications,
     officialAssets: row.officialAssets.map(asset => ({ ...asset, verificationSource: 'database' })),
-    monitoringConfiguration: row.monitoringConfiguration ?? undefined,
   });
   return { ...input, id: row.id, organisationId: row.organisationId,
     createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
@@ -212,19 +208,20 @@ export async function addOfficialAsset(brandId: string, input: unknown, organisa
   return asset;
 }
 
-export async function deleteBrand(id: string): Promise<boolean> {
+export async function deleteBrand(id: string): Promise<'deleted' | 'not_found' | 'has_findings'> {
   const { organisationId } = getDemoOrganisationContext();
   if (useDatabase) {
     const brand = await prisma.brand.findFirst({ where: { id, organisationId } });
-    if (!brand) return false;
-    try { await prisma.brand.delete({ where: { id } }); return true; }
-    catch { return false; }
+    if (!brand) return 'not_found';
+    if (await prisma.finding.count({ where: { brandId: id, organisationId } })) return 'has_findings';
+    await prisma.brand.delete({ where: { id } });
+    return 'deleted';
   }
   const all = await read();
   const next = all.filter(brand => brand.id !== id || brand.organisationId !== organisationId);
-  if (next.length === all.length) return false;
+  if (next.length === all.length) return 'not_found';
   await write(next);
-  return true;
+  return 'deleted';
 }
 
 /** Development-only JSON adapter. Production persistence must use the Prisma repository. */

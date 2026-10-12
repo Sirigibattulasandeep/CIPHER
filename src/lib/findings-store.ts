@@ -9,7 +9,7 @@ import { prisma } from './prisma';
 const file = path.join(process.env.SENTRIX_DATA_DIR || path.join(process.cwd(), 'data'), 'findings.json');
 const useDatabase = Boolean(process.env.DATABASE_URL);
 
-type DatabaseFinding = Prisma.FindingGetPayload<{}>;
+type DatabaseFinding = Prisma.FindingGetPayload<Prisma.FindingDefaultArgs>;
 
 function fromDatabase(row: DatabaseFinding): Finding {
   return findingSchema.parse({ ...row,
