@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101923"><title>App & Domain Monitoring · SENTRIX</title>
+  <link rel="stylesheet" href="/styles.css"><script type="module" src="/app.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#"><span class="brand-mark">S</span><span>SENTRIX<small>Digital risk protection</small></span></a>
+    <div class="workspace-label">WORKSPACE</div><div class="workspace"><span class="workspace-dot"></span> Northstar Financial <span class="chevron">⌄</span></div>
+    <div class="nav-label">MONITOR</div>
+    <nav><a href="#overview">◫ <span>Overview</span></a><a class="active" href="#monitoring">▦ <span>App & domain monitoring</span></a><a href="#findings">◇ <span>All findings</span><b>8</b></a><a href="#investigations">◎ <span>Investigations</span></a></nav>
+    <div class="sidebar-bottom"><div class="source-status"><i></i><span>Demo sources<br><small>Sample data · simulated</small></span></div><div class="user"><div class="avatar">AM</div><span>Alex Morgan<small>Security analyst</small></span><span class="dots">···</span></div></div>
+  </aside>
+  <main>
+    <header class="topbar"><div class="crumb">Monitoring <span>/</span> App & domain monitoring</div><div class="top-actions"><span class="demo-pill"><i></i> SIMULATED DATA</span><button class="icon-button" aria-label="Notifications">♧</button><div class="avatar small">AM</div></div></header>
+    <section class="page-head"><div><div class="eyebrow">EXTERNAL ATTACK SURFACE</div><h1>App & domain monitoring</h1><p>Find potential impersonation across mobile apps and web domains.</p></div><button id="analyze-toggle" class="primary-button">＋ &nbsp; Analyze a URL</button></section>
+    <section id="analyze-panel" class="analyze-panel hidden"><div><strong>Analyze a URL</strong><p>Checks the URL string against configured brand domains. No website is fetched.</p></div><form id="url-form"><input id="url-input" type="text" placeholder="Paste a URL or domain" autocomplete="off" aria-label="URL to analyze"><button class="primary-button" type="submit">Analyze URL</button></form><div id="url-result" role="status"></div></section>
+    <section class="summary" aria-label="Monitoring summary"><div><span>OPEN FINDINGS</span><strong id="open-count">—</strong><small>Across monitored brands</small></div><div><span>HIGHER RISK</span><strong id="high-count">—</strong><small>Needs analyst review</small></div><div><span>BRANDS MONITORED</span><strong>4</strong><small>Across 3 industries</small></div><div><span>LAST SOURCE CHECK</span><strong class="source-time">Today</strong><small>Sample sources · simulated</small></div></section>
+    <section class="work-area"><div class="workspace-main">
+      <div class="tabs" role="tablist"><button class="tab selected" data-kind="all" role="tab">All findings <span id="all-badge">0</span></button><button class="tab" data-kind="app" role="tab">Mobile apps</button><button class="tab" data-kind="domain" role="tab">Web & domains</button></div>
+      <div class="toolbar"><label class="searchbox">⌕ <input id="search" placeholder="Search name, publisher, domain…" aria-label="Search findings"></label><select id="brand-filter" aria-label="Filter by brand"><option value="all">All brands</option></select><select id="industry-filter" aria-label="Filter by industry"><option value="all">All industries</option></select><select id="severity-filter" aria-label="Filter by severity"><option value="all">Any severity</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select><button id="clear-filters" class="text-button">Clear</button></div>
+      <div class="table-wrap"><table><thead><tr><th>ENTITY</th><th>BRAND</th><th>RISK</th><th>CONFIDENCE</th><th>SOURCE</th><th>DETECTED</th><th>STATUS</th><th></th></tr></thead><tbody id="findings-body"></tbody></table><div id="empty-state" class="empty hidden">No findings match these filters.</div></div>
+      <div class="table-footer"><span id="result-count">Showing 0 findings</span><span>Updated just now <button class="text-button" id="refresh">↻ Refresh</button></span></div>
+      <div class="data-note"><span>ⓘ</span><span><strong>Sample data workspace.</strong> Listings and scan history are simulated to demonstrate analysis workflows. No live app store, threat intelligence or website scanning source is connected.</span></div>
+    </div></section>
+  </main>
+  <div id="scrim" class="scrim hidden"></div><aside id="detail" class="detail hidden" aria-label="Finding details" aria-live="polite"></aside>
+</body></html>

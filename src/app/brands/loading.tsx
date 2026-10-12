@@ -1,0 +1,1 @@
+export default function LoadingBrands(){return <div className="p-6 md:p-10"><div className="eyebrow">Brand management</div><div className="surface mt-8 h-48 animate-pulse" aria-label="Loading brands" /></div>}

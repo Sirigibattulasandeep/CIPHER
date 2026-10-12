@@ -193,16 +193,17 @@ export async function updateBrand(id: string, input: BrandInput): Promise<Brand 
 
 export async function addOfficialAsset(brandId: string, input: unknown, organisationId: string) {
   const parsed = officialAssetSchema.parse(input);
+  const assetInput = { ...parsed, verified: false, verificationSource: parsed.verificationSource || 'user-provided' };
   if (useDatabase) {
     const brand = await prisma.brand.findFirst({ where: { id: brandId, organisationId } });
     if (!brand) return undefined;
-    return prisma.officialAsset.create({ data: { brandId, type: parsed.type, url: parsed.url, label: parsed.label || null, verified: parsed.verified } });
+    return prisma.officialAsset.create({ data: { brandId, type: assetInput.type, url: assetInput.url, label: assetInput.label || null, verified: assetInput.verified } });
   }
   const all = await read();
   const index = all.findIndex(brand => brand.id === brandId);
   if (index < 0) return undefined;
   if (all[index].organisationId !== organisationId) throw new Error('FORBIDDEN_ORGANISATION');
-  const asset = { ...parsed, id: `asset_${randomUUID()}`, brandId, createdAt: new Date().toISOString() };
+  const asset = { ...assetInput, id: `asset_${randomUUID()}`, brandId, createdAt: new Date().toISOString() };
   all[index] = { ...all[index], officialAssets: [...all[index].officialAssets, asset], updatedAt: new Date().toISOString() };
   await write(all);
   return asset;

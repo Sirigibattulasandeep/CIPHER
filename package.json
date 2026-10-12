@@ -8,7 +8,7 @@
     "start": "node scripts/dev.mjs start",
     "lint": "eslint src tests scripts prisma/seed.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "node --test test/analysis.test.js && vitest run tests",
     "db:generate": "node scripts/prisma.mjs generate",
     "db:migrate": "node scripts/prisma.mjs migrate deploy",
     "db:seed": "node scripts/prisma.mjs db seed"
