@@ -5,8 +5,8 @@ import { SEVERITIES } from '@/lib/contracts';
 
 const statuses = ['NEW', 'INVESTIGATING', 'RESOLVED', 'FALSE_POSITIVE'] as const;
 
-function parsePositiveInteger(value: string | null, max: number) {
-  if (value === null) return 1;
+function parsePositiveInteger(value: string | null, max: number, fallback: number) {
+  if (value === null) return fallback;
   if (!/^[1-9][0-9]*$/.test(value)) return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) ? Math.min(parsed, max) : null;
@@ -18,8 +18,8 @@ export async function GET(req: Request) {
     const params = new URL(req.url).searchParams;
     const status = params.get('status');
     const severity = params.get('severity');
-    const page = parsePositiveInteger(params.get('page'), 100000);
-    const pageSize = parsePositiveInteger(params.get('pageSize'), 100);
+    const page = parsePositiveInteger(params.get('page'), 100000, 1);
+    const pageSize = parsePositiveInteger(params.get('pageSize'), 100, 20);
     if (status && !statuses.includes(status as typeof statuses[number])) {
       return NextResponse.json({ error: { code: 'VALIDATION_ERROR', message: 'Finding status is invalid.' } }, { status: 400 });
     }

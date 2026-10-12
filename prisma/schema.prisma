@@ -62,8 +62,8 @@ model OrganizationMembership {
   id             String       @id @default(cuid())
   organisationId String
   userId         String
-  organisation   Organisation @relation(fields: [organisationId], references: [id])
-  user           User         @relation(fields: [userId], references: [id])
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   role           MembershipRole @default(ANALYST)
   createdAt      DateTime     @default(now())
 
@@ -106,7 +106,7 @@ model Brand {
 model OfficialAsset {
   id         String   @id @default(cuid())
   brandId    String
-  brand      Brand    @relation(fields: [brandId], references: [id])
+  brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
   type       String
   url        String
   label      String?
@@ -120,7 +120,7 @@ model OfficialAsset {
 model BrandAlias {
   id          String   @id @default(cuid())
   brandId     String
-  brand       Brand    @relation(fields: [brandId], references: [id])
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
   value       String
   normalized  String
   createdAt   DateTime @default(now())
@@ -131,7 +131,7 @@ model BrandAlias {
 model BrandKeyword {
   id          String   @id @default(cuid())
   brandId     String
-  brand       Brand    @relation(fields: [brandId], references: [id])
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
   value       String
   normalized  String
 
@@ -141,7 +141,7 @@ model BrandKeyword {
 model OfficialDomain {
   id          String   @id @default(cuid())
   brandId     String
-  brand       Brand    @relation(fields: [brandId], references: [id])
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
   domain      String
   verified    Boolean  @default(false)
   createdAt   DateTime @default(now())
@@ -153,7 +153,7 @@ model OfficialDomain {
 model OfficialSocialAccount {
   id          String   @id @default(cuid())
   brandId     String
-  brand       Brand    @relation(fields: [brandId], references: [id])
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
   platform    String
   handle      String
   profileUrl  String
@@ -167,7 +167,7 @@ model OfficialSocialAccount {
 model OfficialMobileApplication {
   id          String   @id @default(cuid())
   brandId     String
-  brand       Brand    @relation(fields: [brandId], references: [id])
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
   name        String
   packageId   String
   storeUrl    String?
@@ -181,7 +181,7 @@ model OfficialMobileApplication {
 model MonitoringConfiguration {
   id        String  @id @default(cuid())
   brandId   String  @unique
-  brand     Brand   @relation(fields: [brandId], references: [id])
+  brand     Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
   enabled   Boolean @default(true)
   modules   Json
   rules     Json
@@ -191,7 +191,7 @@ model MonitoringConfiguration {
 model MonitoringJob {
   id          String      @id @default(cuid())
   brandId     String
-  brand       Brand       @relation(fields: [brandId], references: [id])
+  brand       Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
   status      String      @default("queued")
   startedAt   DateTime?
   completedAt DateTime?
@@ -260,6 +260,9 @@ model Evidence {
   finding        Finding  @relation(fields: [findingId], references: [id])
   kind           String
   value          String
+  sourceUrl      String?
+  provenance     String   @default("automated")
+  integrityHash  String?
   protectedRef   String?
   capturedAt     DateTime @default(now())
 

@@ -14,6 +14,9 @@ describe('tenant isolation and finding vertical slice', () => {
   it('rejects malformed finding pagination and keeps list responses tenant-scoped', async () => {
     const invalid = await getFindings(new Request('http://localhost/api/findings?page=abc'));
     expect(invalid.status).toBe(400);
+    const defaults = await getFindings(new Request('http://localhost/api/findings'));
+    expect(defaults.status).toBe(200);
+    expect((await defaults.json()).pageSize).toBe(20);
     const forbidden = await getFindings(new Request('http://localhost/api/findings', { headers: { 'x-organisation-id': 'org_other' } }));
     expect(forbidden.status).toBe(403);
     const bounded = await getFindings(new Request('http://localhost/api/findings?page=1&pageSize=999999'));

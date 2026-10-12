@@ -7,14 +7,20 @@ build/
 coverage/
 *.log
 *.tsbuildinfo
+
+# Local environment and secrets
 .env
 .env.*
 !.env.example
+
+# Data and caches
 data/*.json
+/data/
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Editor and OS artifacts
 .vscode/
 .idea/
 .DS_Store
-/data/

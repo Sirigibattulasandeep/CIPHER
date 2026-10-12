@@ -1,3 +1,17 @@
 import { NextResponse } from 'next/server'; import { z } from 'zod'; import { assertOrganisationRequest } from '@/lib/auth'; import { changeFindingStatus } from '@/lib/finding-store';
 const statusSchema=z.object({status:z.enum(['NEW','INVESTIGATING','RESOLVED','FALSE_POSITIVE'])});
-export async function PATCH(req:Request,{params}:{params:{id:string}}){try{const context=assertOrganisationRequest(req);const parsed=statusSchema.parse(await req.json());const finding=await changeFindingStatus(params.id,parsed.status,context.organisationId);return finding?NextResponse.json(finding):NextResponse.json({error:{code:'NOT_FOUND',message:'Finding not found'}},{status:404});}catch(error){return error instanceof Error&&error.message==='FORBIDDEN_ORGANISATION'?NextResponse.json({error:{code:'FORBIDDEN',message:'You cannot modify another organisation.'}},{status:403}):NextResponse.json({error:{code:'VALIDATION_ERROR',message:'Status input is invalid.'}},{status:400});}}
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const context = assertOrganisationRequest(req);
+    const parsed = statusSchema.parse(await req.json());
+    const finding = await changeFindingStatus(id, parsed.status, context.organisationId);
+    return finding
+      ? NextResponse.json(finding)
+      : NextResponse.json({ error: { code: 'NOT_FOUND', message: 'Finding not found' } }, { status: 404 });
+  } catch (error) {
+    return error instanceof Error && error.message === 'FORBIDDEN_ORGANISATION'
+      ? NextResponse.json({ error: { code: 'FORBIDDEN', message: 'You cannot modify another organisation.' } }, { status: 403 })
+      : NextResponse.json({ error: { code: 'VALIDATION_ERROR', message: 'Status input is invalid.' } }, { status: 400 });
+  }
+}

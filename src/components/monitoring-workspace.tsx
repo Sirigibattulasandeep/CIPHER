@@ -86,6 +86,7 @@ export function MonitoringWorkspace({ brands, initialBrandId }: { brands: Brand[
   const [savingInvestigation, setSavingInvestigation] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const selectedFindingId = selected?.id;
 
   const brand = brands.find(item => item.id === brandId);
   const refreshFindings = useCallback(async () => {
@@ -111,13 +112,13 @@ export function MonitoringWorkspace({ brands, initialBrandId }: { brands: Brand[
   useEffect(() => {
     let active = true;
     setInvestigation(null);
-    if (!selected) return () => { active = false; };
-    void fetch(`/api/investigations?findingId=${encodeURIComponent(selected.id)}`, { cache: 'no-store' })
+    if (!selectedFindingId) return () => { active = false; };
+    void fetch(`/api/investigations?findingId=${encodeURIComponent(selectedFindingId)}`, { cache: 'no-store' })
       .then(response => response.ok ? response.json() as Promise<Investigation[]> : [])
       .then(values => { if (active) setInvestigation(values[0] ?? null); })
       .catch(() => { if (active) setInvestigation(null); });
     return () => { active = false; };
-  }, [selected?.id]);
+  }, [selectedFindingId]);
 
   const filtered = useMemo(() => findings.filter(finding =>
     (sourceFilter === 'ALL' || finding.source === sourceFilter) &&
