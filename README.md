@@ -14,6 +14,8 @@ npm run dev
 
 Open `http://localhost:3000`. With no `DATABASE_URL`, the app uses a local JSON adapter and creates three example brand profiles the first time it reads brand data: Kampus.VC (EdTech, based on the challenge brief), Northstar Bank (fictional FinTech), and Cedar & Finch (fictional e-commerce). Only the latter two are fictional brands. Existing JSON files are preserved; to start with empty demo storage, stop the app and remove the local `data` directory yourself.
 
+Set `SENTRIX_LOGIN_EMAIL`, `SENTRIX_LOGIN_PASSWORD`, and a random `SESSION_SECRET` (at least 32 characters) in `.env.local` before starting the app. The login form issues a signed, HTTP-only 12-hour session cookie; pages and API routes require a valid session, and the sidebar provides sign-out.
+
 Set `SENTRIX_DATA_DIR` to choose another local data directory. The adapter stores brands, findings, and investigations there. It is a single-process development fallback, not a production database; run one app process when using JSON storage.
 
 ## PostgreSQL setup
@@ -46,7 +48,7 @@ The Prisma-backed repositories are organization-scoped and keep the existing Bra
 - No live social-platform, app-store, DNS, or website connectors are configured. The product does not search the public web or provide continuous monitoring.
 - Domain analysis parses submitted URL and metadata only. It makes zero outbound requests; redirect expansion, page retrieval, URL reputation lookups, and image comparison are not implemented.
 - `avatarSimilarity` and `logoSimilarity` are values supplied by an upstream record. SENTRIX does not calculate image similarity.
-- Authenticated login, organization switching, membership role enforcement, rate limiting, alert delivery, takedown workflows, CSV/PDF reports, and protected evidence-file upload are not implemented.
+- Organization switching, membership role enforcement, rate limiting, alert delivery, takedown workflows, CSV/PDF reports, and protected evidence-file upload are not implemented. Login credentials are configured as a single application account through environment variables.
 - Brand fields remain in shared JSON columns for API compatibility while migration 0002 backfills normalized official-asset tables. New production adapters should treat the normalized tables as canonical and keep both representations synchronized until the shared contracts are migrated.
 - The older Python detector and the current app’s TypeScript analyzer are separate implementations. TypeScript is the integrated scanner; Python tests need a working Python 3 runtime.
 - `npm run lint` currently needs ESLint and `eslint-config-next` installed and configured; the base scaffold does not include them.
