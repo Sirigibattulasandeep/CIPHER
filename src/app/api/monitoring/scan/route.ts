@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { scanRecords, type AppCandidate, type RecordOrigin, type SocialCandidate } from '@/lib/social-monitoring';
 import { getBrand } from '@/lib/store';
+import { createFindings } from '@/lib/findings-store';
 import { getDemoOrganisationContext } from '@/lib/auth';
 
 const origin = z.enum(['CONNECTED', 'IMPORTED', 'DEMO']);
@@ -67,8 +68,9 @@ export async function POST(request: Request) {
       error: { code: 'INVALID_RECORDS', message: 'Candidate records have invalid fields.', fields: parsed.error.flatten().fieldErrors },
     }, { status: 400 });
     const findings = scanRecords(brand, kind, parsed.data, new Date().toISOString());
-    return NextResponse.json({ scanned: records.length, created: findings.length, findings,
-      message: findings.length ? `Scanned ${records.length} records and found ${findings.length} records for review.` : 'No review indicators were found in the supplied records.' });
+    const savedFindings = findings.length ? await createFindings(findings) : [];
+    return NextResponse.json({ scanned: records.length, created: savedFindings.length, findings: savedFindings,
+      message: savedFindings.length ? `Scanned ${records.length} records and saved ${savedFindings.length} records for review.` : 'No review indicators were found in the supplied records.' });
   } catch {
     return NextResponse.json({ error: { code: 'SCAN_FAILED', message: 'The scan request could not be processed.' } }, { status: 400 });
   }
