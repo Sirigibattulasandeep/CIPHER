@@ -1,0 +1,303 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { useBrand } from "@/lib/brand-context";
+import { Finding, SourceModule, Severity, FindingStatus } from "@/types";
+import { RiskScoreBadge } from "@/components/shared/risk-score-badge";
+import { StatusSelect } from "@/components/shared/status-select";
+import { formatTimeAgo } from "@/lib/utils";
+import {
+  AlertTriangle,
+  Search,
+  RefreshCw,
+  Download,
+  ExternalLink,
+  ArrowRight,
+  Filter,
+  AtSign,
+  Smartphone,
+  Globe,
+  Layers,
+} from "lucide-react";
+
+export default function FindingsPage() {
+  const { selectedBrandId, brands } = useBrand();
+
+  const [findings, setFindings] = useState<Finding[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedModule, setSelectedModule] = useState<string>("all");
+  const [selectedSeverity, setSelectedSeverity] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+
+  const fetchFindings = async () => {
+    setIsLoading(true);
+    try {
+      const url = `/api/findings?${
+        selectedBrandId !== "all" ? `brandId=${selectedBrandId}` : ""
+      }`;
+      const res = await fetch(url);
+      const json = await res.json();
+      if (json.success) {
+        setFindings(json.data);
+      }
+    } catch (err) {
+      console.warn("Could not fetch findings:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFindings();
+  }, [selectedBrandId]);
+
+  const handleStatusChange = async (findingId: string, newStatus: FindingStatus) => {
+    try {
+      await fetch(`/api/findings/${findingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      setFindings((prev) =>
+        prev.map((f) => (f.id === findingId ? { ...f, status: newStatus } : f))
+      );
+    } catch (err) {
+      alert("Failed to update status.");
+    }
+  };
+
+  const handleExportJson = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(findings, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `sentrix_findings_${Date.now()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const filteredFindings = findings.filter((f) => {
+    const matchesSearch =
+      f.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      f.entityName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      f.brandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      f.indicators.some((ind) => ind.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesModule =
+      selectedModule === "all" || f.sourceModule === selectedModule;
+    const matchesSeverity =
+      selectedSeverity === "all" || f.severity === selectedSeverity;
+    const matchesStatus =
+      selectedStatus === "all" || f.status === selectedStatus;
+
+    return matchesSearch && matchesModule && matchesSeverity && matchesStatus;
+  });
+
+  const getModuleIcon = (mod: SourceModule) => {
+    switch (mod) {
+      case "social":
+        return <AtSign className="w-3.5 h-3.5 text-sky-400" />;
+      case "app":
+        return <Smartphone className="w-3.5 h-3.5 text-emerald-400" />;
+      case "domain":
+      case "web":
+        return <Globe className="w-3.5 h-3.5 text-purple-400" />;
+      default:
+        return <AlertTriangle className="w-3.5 h-3.5 text-sentrix-cyan" />;
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-fadeIn">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-xl bg-sentrix-card border border-sentrix-border">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="p-1 rounded bg-sentrix-cyan/10 text-sentrix-cyan">
+              <AlertTriangle className="w-4 h-4" />
+            </span>
+            <span className="text-xs font-mono uppercase text-sentrix-cyan font-bold tracking-wider">
+              Unified Threat Findings Engine
+            </span>
+          </div>
+          <h1 className="text-xl font-bold text-sentrix-text">
+            Threat & Impersonation Findings Repository
+          </h1>
+          <p className="text-xs text-sentrix-muted">
+            Aggregated threat intelligence ledger harmonizing social impersonations, rogue applications, and phishing domains.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportJson}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-xs text-sentrix-muted hover:text-sentrix-text hover:border-sentrix-borderLight transition-all"
+            title="Export JSON"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Export JSON</span>
+          </button>
+          <button
+            onClick={fetchFindings}
+            disabled={isLoading}
+            className="p-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-muted hover:text-sentrix-text hover:border-sentrix-borderLight transition-colors"
+            title="Refresh findings"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Multi-facet Filter Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+        <div className="relative md:col-span-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sentrix-muted" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search all findings..."
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-text placeholder:text-sentrix-muted focus:outline-none focus:border-sentrix-cyan"
+          />
+        </div>
+
+        {/* Module filter */}
+        <select
+          value={selectedModule}
+          onChange={(e) => setSelectedModule(e.target.value)}
+          className="px-3 py-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-text focus:outline-none focus:border-sentrix-cyan"
+        >
+          <option value="all">All Modules</option>
+          <option value="social">Social Intelligence</option>
+          <option value="app">Mobile App Sentinel</option>
+          <option value="domain">Domain Radar & Phishing</option>
+        </select>
+
+        {/* Severity filter */}
+        <select
+          value={selectedSeverity}
+          onChange={(e) => setSelectedSeverity(e.target.value)}
+          className="px-3 py-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-text focus:outline-none focus:border-sentrix-cyan"
+        >
+          <option value="all">All Severities</option>
+          <option value="critical">Critical (&ge; 85)</option>
+          <option value="high">High (65 - 84)</option>
+          <option value="medium">Medium (35 - 64)</option>
+          <option value="low">Low (0 - 34)</option>
+        </select>
+
+        {/* Status filter */}
+        <select
+          value={selectedStatus}
+          onChange={(e) => setSelectedStatus(e.target.value)}
+          className="px-3 py-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-text focus:outline-none focus:border-sentrix-cyan"
+        >
+          <option value="all">All Statuses</option>
+          <option value="new">New</option>
+          <option value="under_review">Under Review</option>
+          <option value="investigating">Investigating</option>
+          <option value="confirmed_threat">Confirmed Threat</option>
+          <option value="false_positive">False Positive</option>
+          <option value="resolved">Resolved</option>
+        </select>
+      </div>
+
+      {/* Findings Table */}
+      <div className="p-5 rounded-xl bg-sentrix-card border border-sentrix-border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-sentrix-border text-sentrix-subtle uppercase tracking-wider text-[10px]">
+                <th className="py-3 px-3">Severity & Risk</th>
+                <th className="py-3 px-3">Title & Target Entity</th>
+                <th className="py-3 px-3">Brand</th>
+                <th className="py-3 px-3">Vector</th>
+                <th className="py-3 px-3">Status</th>
+                <th className="py-3 px-3">First Seen</th>
+                <th className="py-3 px-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-sentrix-border/60">
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-12 text-sentrix-muted">
+                    Loading findings repository...
+                  </td>
+                </tr>
+              ) : filteredFindings.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-12 text-sentrix-muted">
+                    No threat findings match current filter criteria.
+                  </td>
+                </tr>
+              ) : (
+                filteredFindings.map((finding) => (
+                  <tr
+                    key={finding.id}
+                    className="hover:bg-sentrix-surface/60 transition-colors group"
+                  >
+                    <td className="py-3.5 px-3 whitespace-nowrap">
+                      <RiskScoreBadge
+                        score={finding.riskScore}
+                        severity={finding.severity}
+                        classification={finding.classification}
+                        size="sm"
+                      />
+                    </td>
+                    <td className="py-3.5 px-3">
+                      <div className="font-bold text-sentrix-text group-hover:text-sentrix-cyan transition-colors max-w-sm truncate">
+                        {finding.title}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-sentrix-muted font-mono truncate max-w-sm">
+                        <span>{finding.entityName}</span>
+                        {finding.entityUrl && (
+                          <a
+                            href={finding.entityUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sentrix-cyan hover:underline inline-flex items-center"
+                          >
+                            <ExternalLink className="w-2.5 h-2.5 ml-1" />
+                          </a>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-3 whitespace-nowrap font-medium text-sentrix-text">
+                      {finding.brandName}
+                    </td>
+                    <td className="py-3.5 px-3 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase text-sentrix-muted bg-sentrix-surface px-2 py-0.5 rounded border border-sentrix-border">
+                        {getModuleIcon(finding.sourceModule)}
+                        {finding.sourceModule}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-3 whitespace-nowrap">
+                      <StatusSelect
+                        currentStatus={finding.status}
+                        onChange={(st) => handleStatusChange(finding.id, st)}
+                      />
+                    </td>
+                    <td className="py-3.5 px-3 whitespace-nowrap text-sentrix-muted text-[11px] font-mono">
+                      {formatTimeAgo(finding.firstDetectedAt)}
+                    </td>
+                    <td className="py-3.5 px-3 whitespace-nowrap text-right">
+                      <Link
+                        href={`/findings/${finding.id}`}
+                        className="inline-flex items-center gap-1 font-semibold text-sentrix-cyan hover:underline"
+                      >
+                        Inspect <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+

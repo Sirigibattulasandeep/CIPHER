@@ -10,15 +10,22 @@
     "lint": "eslint src tests scripts prisma/seed.js",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/analysis.test.js && vitest run tests",
+    "test:python": "python -m unittest social_monitoring/test_detector.py",
     "db:generate": "node scripts/prisma.mjs generate",
     "db:migrate": "node scripts/prisma.mjs migrate deploy",
     "db:seed": "node scripts/prisma.mjs db seed"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "canvas-confetti": "^1.9.3",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.11.17",
+    "lucide-react": "^0.460.0",
     "next": "^16.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "recharts": "^2.13.3",
+    "tailwind-merge": "^2.5.4",
     "zod": "^3.23.8"
   },
   "prisma": {
@@ -27,6 +34,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.3.3",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20.17.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
