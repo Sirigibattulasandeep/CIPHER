@@ -1,0 +1,1 @@
+export default function LoadingFindings(){return <div className="p-6 md:p-10"><div className="eyebrow">Detection workspace</div><h1 className="mt-2 text-3xl font-bold">Findings</h1><div className="surface mt-8 h-64 animate-pulse" aria-label="Loading findings" /></div>}
