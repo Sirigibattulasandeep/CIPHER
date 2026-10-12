@@ -16,7 +16,7 @@ async function hasValidSession(value?: string) {
   } catch { return false; }
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const authenticated = await hasValidSession(request.cookies.get('sentrix_session')?.value);
   const isLogin = request.nextUrl.pathname === '/login';
   if (!authenticated && !isLogin) {
