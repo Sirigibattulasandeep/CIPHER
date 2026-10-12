@@ -1,0 +1,1 @@
+import { BrandForm } from '@/components/brand-form'; export default function NewBrand(){return <div className="p-6 md:p-10"><div className="eyebrow">Brand management</div><h1 className="mb-2 mt-2 text-3xl font-bold">Create a brand profile</h1><p className="mb-8 muted">Start with the essentials. Detection modules can extend this profile later.</p><BrandForm/></div>}

@@ -1,0 +1,3 @@
+import { NextResponse } from 'next/server'; import { brandSchema } from '@/lib/contracts'; import { createBrand, listBrands } from '@/lib/store';
+export async function GET(req:Request){const q=new URL(req.url).searchParams.get('q')||'';return NextResponse.json(await listBrands(q));}
+export async function POST(req:Request){try{const parsed=brandSchema.safeParse(await req.json());if(!parsed.success)return NextResponse.json({error:{code:'VALIDATION_ERROR',message:'Please correct the highlighted fields.',fields:parsed.error.flatten().fieldErrors}},{status:400});return NextResponse.json(await createBrand(parsed.data),{status:201});}catch{return NextResponse.json({error:{code:'INVALID_JSON',message:'Request body must be valid JSON.'}},{status:400});}}
