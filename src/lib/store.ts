@@ -3,7 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { brandSchema, officialAssetSchema, type Brand, type BrandInput } from './contracts';
 
-const file = path.join(process.cwd(),'data','brands.json');
+const file = path.join(process.env.SENTRIX_DATA_DIR || path.join(process.cwd(),'data'),'brands.json');
 const org = 'org_demo';
 async function read():Promise<Brand[]> {
   try {
@@ -32,7 +32,7 @@ async function read():Promise<Brand[]> {
 }
 async function write(brands:Brand[]) { const temporary=`${file}.${process.pid}.${randomUUID()}.tmp`; await fs.mkdir(path.dirname(file),{recursive:true}); await fs.writeFile(temporary,JSON.stringify(brands,null,2),'utf8'); await fs.rename(temporary,file); }
 const sameIdentity=(left:string,right:string)=>left.trim().toLocaleLowerCase()===right.trim().toLocaleLowerCase();
-function sanitise(input:BrandInput):BrandInput{return {...input,officialAssets:input.officialAssets.map(asset=>({...asset,verified:false,verificationSource:asset.verificationSource||'user-provided'})),socialProfiles:input.socialProfiles.map(profile=>({...profile,status:profile.status==='ACTIVE'?'UNCONFIRMED':profile.status})),mobileApplications:input.mobileApplications.map(application=>({...application,status:application.status==='ACTIVE'?'UNCONFIRMED':application.status}))};}
+function sanitise(input:BrandInput):BrandInput{const officialAssets=input.officialAssets||[];const socialProfiles=input.socialProfiles||[];const mobileApplications=input.mobileApplications||[];return {...input,officialAssets:officialAssets.map(asset=>({...asset,verified:false,verificationSource:asset.verificationSource||'user-provided'})),socialProfiles:socialProfiles.map(profile=>({...profile,status:profile.status==='ACTIVE'?'UNCONFIRMED':profile.status})),mobileApplications:mobileApplications.map(application=>({...application,status:application.status==='ACTIVE'?'UNCONFIRMED':application.status}))};}
 function ensureUniqueBrand(all:Brand[],input:BrandInput,ignoreId?:string){const duplicate=all.find(brand=>brand.id!==ignoreId&&(sameIdentity(brand.name,input.name)||brand.aliases.some(alias=>sameIdentity(alias,input.name))||input.aliases.some(alias=>sameIdentity(alias,brand.name))));if(duplicate)throw new Error('DUPLICATE_BRAND');}
 export async function listBrands(q='',organisationId=org){ const all=await read(); return all.filter(b=>b.organisationId===organisationId&&(!q||[b.name,...b.aliases,...b.domains].some(v=>v.toLowerCase().includes(q.toLowerCase())))); }
 export async function queryBrands(options:{q?:string;industry?:string;monitoring?:string;sort?:'name'|'updatedAt';direction?:'asc'|'desc';page?:number;pageSize?:number},organisationId=org){ let items=await listBrands(options.q,organisationId); if(options.industry)items=items.filter(item=>item.industry===options.industry); if(options.monitoring)items=items.filter(item=>String(item.monitoringConfiguration.enabled)===options.monitoring); const direction=options.direction==='desc'?-1:1; items.sort((a,b)=>String(a[options.sort||'name']).localeCompare(String(b[options.sort||'name']))*direction); const page=Math.max(1,options.page||1),pageSize=Math.min(100,Math.max(1,options.pageSize||20)),total=items.length; return {items:items.slice((page-1)*pageSize,page*pageSize),total,page,pageSize,totalPages:Math.max(1,Math.ceil(total/pageSize))}; }
