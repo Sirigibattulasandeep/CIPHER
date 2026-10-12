@@ -36,6 +36,16 @@ class OfficialAccount:
 
 
 @dataclass(frozen=True)
+class OfficialApp:
+    store: str
+    app_id: str
+    name: str
+    publisher: str | None = None
+    store_url: str | None = None
+    description: str = ""
+
+
+@dataclass(frozen=True)
 class BrandProfile:
     id: str
     name: str
@@ -43,6 +53,7 @@ class BrandProfile:
     official_domains: tuple[str, ...] = ()
     aliases: tuple[str, ...] = ()
     industry: str | None = None
+    official_apps: tuple[OfficialApp, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -98,7 +109,7 @@ class Finding:
     id: str
     brand_id: str
     brand_name: str
-    affected_profile_id: str
+    affected_profile_id: str | None
     platform: str
     profile_url: str | None
     category: str
@@ -108,6 +119,8 @@ class Finding:
     assessment: RiskAssessment
     source: RecordSource
     observed_at: datetime
+    affected_asset_id: str | None = None
+    asset_type: str = "social_profile"
     status: FindingStatus = FindingStatus.OPEN
 
 
@@ -160,13 +173,19 @@ def _domain(url_or_domain: str) -> str | None:
     raw = url_or_domain.strip()
     if not raw:
         return None
-    parsed = urlparse(raw if "://" in raw else "https://" + raw)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
-        return None
     try:
-        return parsed.hostname.rstrip(".").encode("idna").decode("ascii").casefold()
-    except UnicodeError:
+        parsed = urlparse(raw if "://" in raw else "https://" + raw)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
+            return None
+        parsed.port  # Validate that any supplied port is numeric and in range.
+            host = parsed.hostname.rstrip(".").encode("idna").decode("ascii").casefold()
+    except (UnicodeError, ValueError):
         return None
+        labels = host.split(".")
+        if any(not label or len(label) > 63 or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", label)
+               for label in labels):
+            return None
+        return host
 
 
 def _is_domain_or_subdomain(domain: str, official: str) -> bool:
@@ -310,7 +329,8 @@ def analyze_candidate(
         if 0 <= value <= 1 and value >= 0.86:
             add("assets", "avatar_similarity", config.avatar_similarity,
                 "Profile image resembles the supplied brand asset",
-                f"The upstream image-analysis component reported {value:.0%} similarity.",
+                f"The upstream image-analysis component reported {value:.0%} similarity against "
+                f"asset {brand.official_logo_asset_id or '(asset reference not configured)' }.",
                 candidate.profile_url, strength="supporting")
     if candidate.verified is True and not exact_official:
         add("metadata", "platform_verified", 4,

@@ -7,6 +7,7 @@ import hashlib
 import json
 from typing import Any, Iterable
 
+from .app_detector import AppCandidate
 from .detector import (
     BrandProfile,
     CandidateProfile,
@@ -118,6 +119,87 @@ def scan_candidates(
     if config is None:
         return [analyze_candidate(brand, candidate) for candidate in candidates]
     return [analyze_candidate(brand, candidate, config) for candidate in candidates]
+
+
+def app_candidate_from_mapping(
+    row: dict[str, Any], *, source: RecordSource = RecordSource.IMPORTED,
+) -> AppCandidate:
+    """Convert one app-store export row to the app detector input shape."""
+    if not isinstance(row, dict):
+        raise ImportErrorDetail("Each app record must be a JSON object.")
+    store = str(row.get("store") or row.get("platform") or "Unknown").strip() or "Unknown"
+    app_id = str(row.get("app_id") or row.get("package_name") or "").strip()
+    name = str(row.get("name") or row.get("app_name") or "").strip()
+    raw_id = row.get("id")
+    if raw_id is None:
+        stable_input = f"{store.casefold()}|{app_id.casefold()}|{name.casefold()}|{row.get('store_url', '')}"
+        raw_id = hashlib.sha256(stable_input.encode("utf-8")).hexdigest()[:16]
+    links = row.get("links") or []
+    if isinstance(links, str):
+        links = [links]
+    if not isinstance(links, list):
+        raise ImportErrorDetail("App 'links' must be a list of URLs.")
+    try:
+        reliability = float(row.get("source_reliability", 0.75))
+    except (TypeError, ValueError):
+        reliability = 0.0
+    logo_similarity = row.get("logo_similarity")
+    try:
+        logo_similarity = float(logo_similarity) if logo_similarity is not None else None
+    except (TypeError, ValueError):
+        logo_similarity = None
+    return AppCandidate(
+        id=str(raw_id), store=store, app_id=app_id, name=name,
+        publisher=str(row.get("publisher") or ""),
+        description=str(row.get("description") or ""),
+        store_url=str(row["store_url"]) if row.get("store_url") else None,
+        links=tuple(str(link) for link in links if link),
+        logo_similarity=logo_similarity, source=source,
+        source_reliability=reliability,
+        observed_at=_parse_datetime(row.get("observed_at")) or datetime.now(timezone.utc),
+    )
+
+
+def parse_imported_apps_json(contents: str) -> list[AppCandidate]:
+    """Parse an app array or an object containing an `apps` array."""
+    try:
+        payload = json.loads(contents)
+    except json.JSONDecodeError as exc:
+        raise ImportErrorDetail(f"Invalid JSON at line {exc.lineno}, column {exc.colno}.") from exc
+    if isinstance(payload, dict):
+        payload = payload.get("apps")
+    if not isinstance(payload, list):
+        raise ImportErrorDetail("App import must be an array or an object with an 'apps' array.")
+    return [app_candidate_from_mapping(row, source=RecordSource.IMPORTED) for row in payload]
+
+
+def demo_app_candidates() -> list[AppCandidate]:
+    """Simulated app listings for scanner demos; never label as live threats."""
+    now = datetime.now(timezone.utc)
+    return [
+        AppCandidate(
+            id="demo-official-app", store="DemoStore", app_id="com.northstar.bank",
+            name="Northstar Banking", publisher="Northstar Labs",
+            description="Manage your Northstar account and banking services.",
+            store_url="https://store.example/demo-official-app",
+            source=RecordSource.DEMO, source_reliability=0.6, observed_at=now,
+        ),
+        AppCandidate(
+            id="demo-lookalike-app", store="DemoStore", app_id="com.example.northstarr.support",
+            name="Northstar Banking Support", publisher="Unknown Publisher",
+            description="Official Northstar support. Claim your prize by paying a processing fee.",
+            store_url="https://store.example/demo-lookalike-app",
+            links=("https://northstarr.example.invalid/login",), logo_similarity=0.92,
+            source=RecordSource.DEMO, source_reliability=0.6, observed_at=now,
+        ),
+        AppCandidate(
+            id="demo-unrelated-app", store="DemoStore", app_id="com.example.stargazer",
+            name="Stargazer Sky Guide", publisher="Open Sky Apps",
+            description="Explore constellations and learn astronomy.",
+            store_url="https://store.example/demo-unrelated-app",
+            source=RecordSource.DEMO, source_reliability=0.6, observed_at=now,
+        ),
+    ]
 
 
 def filter_findings(

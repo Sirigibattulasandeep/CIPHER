@@ -2,9 +2,11 @@
 
 import unittest
 
+from social_monitoring.app_detector import AppCandidate, analyze_app_candidate, scan_app_candidates
 from social_monitoring.detector import (
     BrandProfile,
     CandidateProfile,
+    OfficialApp,
     OfficialAccount,
     RecordSource,
     SocialPost,
@@ -12,8 +14,10 @@ from social_monitoring.detector import (
 )
 from social_monitoring.scanner import (
     ImportErrorDetail,
+    demo_app_candidates,
     demo_candidates,
     filter_findings,
+    parse_imported_apps_json,
     parse_imported_json,
     scan_candidates,
 )
@@ -28,7 +32,30 @@ class TestSocialMonitoring(unittest.TestCase):
             official_domains=("northstar.example",),
             aliases=("North Star",),
             industry="FinTech",
+            official_apps=(OfficialApp(
+                store="DemoStore", app_id="com.northstar.bank",
+                name="Northstar Banking", publisher="Northstar Labs",
+                store_url="https://store.example/northstar-bank",
+                description="Manage your Northstar account and banking services.",
+            ),),
         )
+
+    def test_brand_profile_validation_accepts_configured_assets(self):
+        self.assertEqual(self.brand.validation_errors(), ())
+
+    def test_brand_profile_validation_reports_bad_assets_and_duplicates(self):
+        invalid = BrandProfile(
+            id="", name="",
+            official_accounts=(OfficialAccount("", ""), OfficialAccount("", "")),
+            official_domains=("https://bad domain", "https://bad domain"),
+            official_apps=(OfficialApp("", "", ""), OfficialApp("", "", "")),
+        )
+        errors = invalid.validation_errors()
+        self.assertIn("Brand ID is required.", errors)
+        self.assertIn("Brand name is required.", errors)
+        self.assertTrue(any("Invalid official domain" in error for error in errors))
+        self.assertTrue(any("official social account" in error for error in errors))
+        self.assertTrue(any("official app" in error for error in errors))
 
     def test_exact_official_handle_is_not_flagged_for_identity_alone(self):
         candidate = CandidateProfile(
@@ -141,6 +168,83 @@ class TestSocialMonitoring(unittest.TestCase):
         self.assertEqual(item.source_url, "https://social.example/post/otp")
         self.assertIsNotNone(item.observed_at)
         self.assertEqual(finding.affected_profile_id, candidate.id)
+
+    def test_exact_official_app_is_excluded(self):
+        candidate = AppCandidate(
+            id="official-app", store="DemoStore", app_id="com.northstar.bank",
+            name="Northstar Banking", publisher="Northstar Labs",
+            description="Manage your Northstar account and banking services.",
+            store_url="https://store.example/northstar-bank",
+        )
+        finding = analyze_app_candidate(self.brand, candidate)
+        self.assertEqual(finding.assessment.score, 0)
+        self.assertEqual(finding.assessment.severity, "low")
+        self.assertEqual(finding.asset_type, "mobile_app")
+        self.assertEqual(finding.affected_asset_id, candidate.id)
+
+    def test_app_name_spacing_and_character_swap_variants_are_detectable(self):
+        spaced = AppCandidate(
+            id="spaced-app", store="DemoStore", app_id="com.example.other",
+            name="North Star Banking", publisher="Northstar Labs",
+        )
+        swapped = AppCandidate(
+            id="swapped-app", store="DemoStore", app_id="com.example.other2",
+            name="Northstar Bankign", publisher="Northstar Labs",
+        )
+        self.assertIn("app_name_similarity", analyze_app_candidate(self.brand, spaced).indicators)
+        self.assertIn("app_name_similarity", analyze_app_candidate(self.brand, swapped).indicators)
+
+    def test_app_added_words_are_combined_with_publisher_evidence(self):
+        candidate = AppCandidate(
+            id="added-word-app", store="DemoStore", app_id="com.example.support",
+            name="Northstar Banking Support", publisher="Different Publisher",
+            store_url="https://store.example/apps/support",
+        )
+        finding = analyze_app_candidate(self.brand, candidate)
+        self.assertIn("app_name_similarity", finding.indicators)
+        self.assertIn("publisher_mismatch", finding.indicators)
+        self.assertEqual(finding.assessment.severity, "medium")
+
+    def test_app_with_unrelated_name_stays_low_risk(self):
+        candidate = AppCandidate(
+            id="unrelated-app", store="DemoStore", app_id="com.example.sky",
+            name="Stargazer Sky Guide", publisher="Open Sky Apps",
+            description="Explore constellations and learn astronomy.",
+        )
+        finding = analyze_app_candidate(self.brand, candidate)
+        self.assertEqual(finding.assessment.score, 0)
+        self.assertEqual(finding.assessment.severity, "low")
+
+    def test_suspicious_app_uses_multiple_explained_signals(self):
+        candidate = AppCandidate(
+            id="suspect-app", store="DemoStore", app_id="com.example.northstarr",
+            name="Northstar Banking Support", publisher="Unknown Publisher",
+            description="Official Northstar support. Claim your prize by paying a processing fee.",
+            store_url="https://store.example/apps/northstarr",
+            links=("https://northstarr.example.invalid/login",), logo_similarity=0.92,
+            source=RecordSource.IMPORTED,
+        )
+        finding = analyze_app_candidate(self.brand, candidate)
+        self.assertEqual(finding.assessment.severity, "high")
+        self.assertIn("publisher_mismatch", finding.indicators)
+        self.assertIn("official_affiliation_claim", finding.indicators)
+        self.assertIn("payment_request", finding.indicators)
+        self.assertIn("brand_domain_lookalike", finding.indicators)
+        self.assertTrue(all(e.summary and e.detail for e in finding.evidence))
+
+    def test_app_import_and_demo_source_labels(self):
+        imported = parse_imported_apps_json('{"apps":[{"store":"DemoStore","name":"Example App"}]}')
+        self.assertEqual(imported[0].source, RecordSource.IMPORTED)
+        demo_results = [analyze_app_candidate(self.brand, app) for app in demo_app_candidates()]
+        self.assertTrue(all(f.source == RecordSource.DEMO for f in demo_results))
+        official_demo = next(f for f in demo_results if f.affected_asset_id == "demo-official-app")
+        self.assertEqual(official_demo.assessment.score, 0)
+
+    def test_app_batch_scan_feeds_the_same_finding_filters(self):
+        findings = scan_app_candidates(self.brand, demo_app_candidates())
+        high_priority = filter_findings(findings, platform="DemoStore", severity="high")
+        self.assertTrue(high_priority)
+        self.assertTrue(all(f.asset_type == "mobile_app" for f in high_priority))
 
 
 if __name__ == "__main__":
