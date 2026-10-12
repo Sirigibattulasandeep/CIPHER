@@ -14,7 +14,7 @@ export type Investigation = {
 };
 
 const file = path.join(process.env.SENTRIX_DATA_DIR || path.join(process.cwd(), 'data'), 'investigations.json');
-const useDatabase = Boolean(process.env.DATABASE_URL);
+const useDatabase = process.env.NODE_ENV !== 'test' && Boolean(process.env.DATABASE_URL);
 
 type DatabaseInvestigation = Prisma.InvestigationGetPayload<{ include: { finding: true; notes: true } }>;
 

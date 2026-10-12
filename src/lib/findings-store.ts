@@ -7,12 +7,14 @@ import { getDemoOrganisationContext } from './auth';
 import { prisma } from './prisma';
 
 const file = path.join(process.env.SENTRIX_DATA_DIR || path.join(process.cwd(), 'data'), 'findings.json');
-const useDatabase = Boolean(process.env.DATABASE_URL);
+const useDatabase = process.env.NODE_ENV !== 'test' && Boolean(process.env.DATABASE_URL);
 
-type DatabaseFinding = Prisma.FindingGetPayload<{}>;
+type DatabaseFinding = Prisma.FindingGetPayload<Prisma.FindingDefaultArgs>;
 
 function fromDatabase(row: DatabaseFinding): Finding {
   return findingSchema.parse({ ...row,
+    sourceUrl: row.sourceUrl ?? undefined,
+    scoringVersion: row.scoringVersion ?? undefined,
     evidence: Array.isArray(row.evidence) ? row.evidence : [],
     detectionIndicators: Array.isArray(row.detectionIndicators) ? row.detectionIndicators : [],
     riskScoreBreakdown: Array.isArray(row.riskScoreBreakdown) ? row.riskScoreBreakdown : undefined,
