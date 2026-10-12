@@ -1,28 +1,20 @@
-node_modules
-.npm-cache/
-.next
-out
-.env
-.env.local
-data/*.json
-coverage
-
-# Local environment and secrets
-.env
-.env.*
-!.env.example
-
-# Dependencies and generated output
 node_modules/
+.npm-cache/
 .next/
 out/
 dist/
 build/
 coverage/
+*.log
 *.tsbuildinfo
-
-# Local application data
+.env
+.env.*
+!.env.example
+data/*.json
+__pycache__/
+*.py[cod]
+*$py.class
+.vscode/
+.idea/
+.DS_Store
 /data/
-
-# Nested repository accidentally present in the workspace
-/CIPHER/
