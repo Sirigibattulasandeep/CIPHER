@@ -7,7 +7,7 @@ import { getDemoOrganisationContext } from './auth';
 import { prisma } from './prisma';
 
 const file = path.join(process.env.SENTRIX_DATA_DIR || path.join(process.cwd(), 'data'), 'findings.json');
-const useDatabase = Boolean(process.env.DATABASE_URL);
+const useDatabase = process.env.NODE_ENV !== 'test' && Boolean(process.env.DATABASE_URL);
 
 type DatabaseFinding = Prisma.FindingGetPayload<Prisma.FindingDefaultArgs>;
 
