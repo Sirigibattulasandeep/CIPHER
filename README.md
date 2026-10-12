@@ -1,6 +1,6 @@
 # SENTRIX by CIPHER
 
-**Detect Threats. Defend Trust.** SENTRIX is a Digital Risk Protection prototype for reviewing potential social, mobile-app, website, and domain impersonation. The current branch is `feature/social-monitoring` and preserves the shared Next.js, Zod, Prisma, and Tailwind foundation.
+**Detect Threats. Defend Trust.** SENTRIX is a Digital Risk Protection prototype for reviewing potential social, mobile-app, website, and domain impersonation. It uses Next.js, Zod, Prisma, PostgreSQL, and Tailwind.
 
 ## Run locally
 
@@ -50,7 +50,6 @@ The Prisma-backed repositories are organization-scoped and keep the existing Bra
 - Organization switching, membership role enforcement, rate limiting, alert delivery, takedown workflows, CSV/PDF reports, and protected evidence-file upload are not implemented. Login credentials are configured as a single application account through environment variables.
 - Brand fields remain in shared JSON columns for API compatibility while migration 0002 backfills normalized official-asset tables. New production adapters should treat the normalized tables as canonical and keep both representations synchronized until the shared contracts are migrated.
 - The older Python detector and the current app’s TypeScript analyzer are separate implementations. TypeScript is the integrated scanner; Python tests need a working Python 3 runtime.
-- `npm run lint` currently needs ESLint and `eslint-config-next` installed and configured; the base scaffold does not include them.
 
 ## API endpoints
 

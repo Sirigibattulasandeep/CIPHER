@@ -260,6 +260,9 @@ model Evidence {
   finding        Finding  @relation(fields: [findingId], references: [id])
   kind           String
   value          String
+  sourceUrl      String?
+  provenance     String   @default("automated")
+  integrityHash  String?
   protectedRef   String?
   capturedAt     DateTime @default(now())
 

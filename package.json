@@ -2,6 +2,7 @@
   "name": "sentrix-foundation",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "next build",
@@ -41,6 +42,9 @@
     "vitest": "^4.1.11"
   },
   "allowScripts": {
-    "@embedded-postgres/windows-x64@17.10.0-beta.17": true
+    "@embedded-postgres/windows-x64@17.10.0-beta.17": true,
+    "@prisma/client@5.22.0": true,
+    "@prisma/engines@5.22.0": true,
+    "prisma@5.22.0": true
   }
 }
