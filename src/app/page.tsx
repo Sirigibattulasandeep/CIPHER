@@ -1,68 +1,123 @@
 import Link from 'next/link';
+import type { Finding, Severity } from '@/lib/contracts';
 import { listFindings } from '@/lib/findings-store';
 import { listBrands } from '@/lib/store';
 import { listInvestigations } from '@/lib/investigations-store';
-import { aggregateExposure, severityCounts, severityOrder } from '@/lib/dashboard-metrics';
+import { aggregateExposure, severityOrder } from '@/lib/dashboard-metrics';
 
-const severityColor = { CRITICAL: '#fb7185', HIGH: '#fb923c', MODERATE: '#facc15', LOW: '#2dd4bf' } as const;
-const severityText = { CRITICAL: 'Critical', HIGH: 'High', MODERATE: 'Medium', LOW: 'Low' } as const;
+const severityNames: Record<Severity, string> = { CRITICAL: 'Critical', HIGH: 'High', MODERATE: 'Moderate', LOW: 'Low' };
+const severityColors: Record<Severity, string> = { CRITICAL: '#fb7185', HIGH: '#fb923c', MODERATE: '#facc15', LOW: '#2dd4bf' };
+const sourceNames: Record<Finding['source'], string> = { SOCIAL: 'Social', MOBILE_APP: 'Apps', DOMAIN: 'Domains', WEBSITE: 'Websites' };
 
-function point(angle: number, radius: number) {
-  return { x: 110 + Math.cos(angle) * radius, y: 105 - Math.sin(angle) * radius };
+function MetricCard({ label, value, detail, tone = 'cyan' }: { label: string; value: number; detail: string; tone?: 'cyan' | 'rose' | 'amber' | 'violet' }) {
+  return <article className={`metric-card metric-${tone}`}>
+    <div className="flex items-center justify-between gap-3"><p className="text-sm font-medium text-slate-300">{label}</p><span className="metric-mark" aria-hidden="true" /></div>
+    <p className="mt-5 text-4xl font-semibold tracking-tight text-white">{value}</p>
+    <p className="mt-2 text-sm muted">{detail}</p>
+  </article>;
 }
 
-function Arc({ start, end, color, width = 13 }: { start: number; end: number; color: string; width?: number }) {
-  const first = point(Math.PI - start * Math.PI, 84);
-  const last = point(Math.PI - end * Math.PI, 84);
-  const large = end - start > 0.5 ? 1 : 0;
-  return <path d={`M ${first.x} ${first.y} A 84 84 0 ${large} 1 ${last.x} ${last.y}`} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" />;
+function SeverityBreakdown({ findings }: { findings: Finding[] }) {
+  const counts = severityOrder.reduce((result, severity) => {
+    result[severity] = findings.filter(item => item.severity === severity).length;
+    return result;
+  }, {} as Record<Severity, number>);
+  const max = Math.max(1, ...Object.values(counts));
+
+  return <section className="surface p-5 sm:p-6" aria-labelledby="severity-heading">
+    <div className="flex items-start justify-between gap-4">
+      <div><p className="eyebrow">At a glance</p><h2 id="severity-heading" className="mt-2 text-lg font-semibold text-white">Findings by severity</h2><p className="mt-1 text-sm muted">A quick way to see what may need attention first.</p></div>
+      <Link className="quiet-link shrink-0 text-sm" href="/findings">View all <span aria-hidden="true">→</span></Link>
+    </div>
+    {findings.length ? <div className="mt-7 space-y-5" role="list" aria-label="Findings by severity">
+      {severityOrder.map(severity => <div key={severity} role="listitem">
+        <div className="mb-2 flex items-center justify-between gap-3 text-sm"><span className="flex items-center gap-2.5 font-medium text-slate-200"><span className="severity-dot" style={{ backgroundColor: severityColors[severity] }} />{severityNames[severity]}</span><span className="tabular-nums text-slate-300">{counts[severity]} <span className="muted">{counts[severity] === 1 ? 'finding' : 'findings'}</span></span></div>
+        <div className="chart-track" role="progressbar" aria-label={`${severityNames[severity]} findings`} aria-valuemin={0} aria-valuemax={max} aria-valuenow={counts[severity]}><div className="chart-fill" style={{ width: `${counts[severity] / max * 100}%`, backgroundColor: severityColors[severity] }} /></div>
+      </div>)}
+    </div> : <div className="empty-chart mt-6"><span className="empty-chart-icon" aria-hidden="true">✓</span><div><p className="font-medium text-white">Nothing needs review yet</p><p className="mt-1 text-sm muted">Findings will appear here after you analyze records.</p></div></div>}
+    <p className="mt-6 border-t border-line pt-4 text-xs muted">Severity describes the potential impact in the saved record. It is a review guide, not a prediction.</p>
+  </section>;
 }
 
-function ExposureGauge({ value }: { value: number }) {
-  const angle = Math.PI - value / 100 * Math.PI;
-  const end = point(angle, 58);
-  const severity = value >= 85 ? 'CRITICAL' : value >= 65 ? 'HIGH' : value >= 35 ? 'MODERATE' : 'LOW';
-  return <div className="surface p-5"><div className="eyebrow">Aggregate brand exposure</div><svg className="mx-auto mt-3 block w-full max-w-[300px]" viewBox="0 0 220 130" role="img" aria-label={`Exposure index ${value} out of 100, ${severityText[severity]} priority`}>
-    <Arc start={0.02} end={0.34} color={severityColor.LOW} /><Arc start={0.36} end={0.64} color={severityColor.MODERATE} /><Arc start={0.66} end={0.84} color={severityColor.HIGH} /><Arc start={0.86} end={0.98} color={severityColor.CRITICAL} />
-    <line x1="110" y1="105" x2={end.x} y2={end.y} stroke="#e5f3ff" strokeWidth="3" strokeLinecap="round" /><circle cx="110" cy="105" r="6" fill="#e5f3ff" />
-    <text x="110" y="82" textAnchor="middle" fill="#f8fafc" fontSize="23" fontWeight="700">{value}</text>
-    <text x="110" y="100" textAnchor="middle" fill="#94a3b8" fontSize="9">out of 100</text>
-  </svg><div className="text-center"><span className="rounded-full border px-3 py-1 text-xs font-semibold" style={{ color: severityColor[severity], borderColor: `${severityColor[severity]}66` }}>{severityText[severity]} priority</span><p className="mt-3 text-xs muted">Heuristic: highest active finding score + 5 per additional source family, capped at 15 points. It is a prioritization index, not a probability.</p></div></div>;
-}
-
-function SeverityGauge({ counts }: { counts: Record<(typeof severityOrder)[number], number> }) {
-  const total = severityOrder.reduce((sum, severity) => sum + counts[severity], 0);
+function SourceBreakdown({ findings }: { findings: Finding[] }) {
+  const sourceOrder: Finding['source'][] = ['SOCIAL', 'MOBILE_APP', 'DOMAIN', 'WEBSITE'];
+  const counts = sourceOrder.map(source => ({ source, count: findings.filter(item => item.source === source).length }));
+  const total = findings.length;
   let cursor = 0;
-  const arcs = severityOrder.map(severity => {
+  const colors: Record<Finding['source'], string> = { SOCIAL: '#5eead4', MOBILE_APP: '#60a5fa', DOMAIN: '#a78bfa', WEBSITE: '#fbbf24' };
+  const segments = counts.map(item => {
     const start = cursor;
-    const portion = total ? counts[severity] / total : 0;
-    cursor += portion;
-    return { severity, start, end: cursor, portion };
-  }).filter(item => item.portion > 0);
-  return <div className="surface p-5"><div className="eyebrow">Finding severity distribution</div><svg className="mx-auto mt-3 block w-full max-w-[300px]" viewBox="0 0 220 130" role="img" aria-label={total ? severityOrder.map(severity => `${severityText[severity]} ${counts[severity]}`).join(', ') : 'No findings to display'}>
-    {!total ? <Arc start={0.02} end={0.98} color="#334155" /> : arcs.map(item => <Arc key={item.severity} start={item.start + 0.004} end={item.end - 0.004} color={severityColor[item.severity]} width={18} />)}
-    <text x="110" y="80" textAnchor="middle" fill="#f8fafc" fontSize="22" fontWeight="700">{total}</text><text x="110" y="100" textAnchor="middle" fill="#94a3b8" fontSize="9">total findings</text>
-  </svg><ul className="mt-2 grid grid-cols-2 gap-2 text-sm">{severityOrder.map(severity => <li key={severity} className="flex items-center justify-between rounded-md border border-line px-3 py-2"><span style={{ color: severityColor[severity] }}>{severityText[severity]}</span><span>{counts[severity]}</span></li>)}</ul></div>;
+    cursor += total ? item.count / total * 100 : 0;
+    return `${colors[item.source]} ${start}% ${cursor}%`;
+  });
+  const chart = total ? `conic-gradient(${segments.join(', ')})` : 'conic-gradient(#334155 0% 100%)';
+
+  return <section className="surface p-5 sm:p-6" aria-labelledby="sources-heading">
+    <p className="eyebrow">Coverage</p><h2 id="sources-heading" className="mt-2 text-lg font-semibold text-white">Where records came from</h2><p className="mt-1 text-sm muted">Saved findings, grouped by source.</p>
+    <div className="mt-6 flex flex-col items-center gap-6 sm:flex-row sm:justify-around">
+      <div className="source-donut" style={{ background: chart }} role="img" aria-label={total ? counts.filter(item => item.count).map(item => `${sourceNames[item.source]} ${item.count}`).join(', ') : 'No saved findings'}><div className="source-donut-center"><span className="text-3xl font-semibold text-white">{total}</span><span className="mt-1 text-[10px] uppercase tracking-[.15em] muted">records</span></div></div>
+      <ul className="w-full space-y-3 sm:max-w-[210px]">{counts.map(item => <li key={item.source} className="flex items-center justify-between gap-4 text-sm"><span className="flex items-center gap-2.5 text-slate-300"><span className="severity-dot" style={{ backgroundColor: colors[item.source] }} />{sourceNames[item.source]}</span><span className="tabular-nums font-medium text-white">{item.count}</span></li>)}</ul>
+    </div>
+    {!total && <p className="mt-5 text-center text-xs muted">Run an analysis to see your source mix.</p>}
+  </section>;
+}
+
+function scoreLabel(score: number) {
+  if (score >= 85) return 'Critical';
+  if (score >= 65) return 'High';
+  if (score >= 35) return 'Moderate';
+  return 'Low';
 }
 
 export default async function Home() {
   const [brands, findings, investigations] = await Promise.all([listBrands(), listFindings(), listInvestigations()]);
-  const activeFindings = findings.filter(finding => !['RESOLVED', 'FALSE_POSITIVE'].includes(finding.status));
-  const criticalHigh = activeFindings.filter(finding => finding.severity === 'CRITICAL' || finding.severity === 'HIGH');
-  const counts = severityCounts(findings);
-  const sourceCounts = { SOCIAL: findings.filter(item => item.source === 'SOCIAL').length,
-    MOBILE_APP: findings.filter(item => item.source === 'MOBILE_APP').length,
-    DOMAIN: findings.filter(item => item.source === 'DOMAIN' || item.source === 'WEBSITE').length };
-  const simulated = findings.filter(item => item.evidence.some(value => value === 'Record origin: DEMO')).length;
+  const activeFindings = findings.filter(item => !['RESOLVED', 'FALSE_POSITIVE'].includes(item.status));
+  const priorityFindings = activeFindings.filter(item => item.severity === 'CRITICAL' || item.severity === 'HIGH');
   const openInvestigations = investigations.filter(item => item.status !== 'CLOSED').length;
-  const activeBrands = brands.filter(brand => brand.monitoringConfiguration.enabled).length;
-  return <div className="p-6 md:p-10">
-    <header className="mb-8 flex flex-wrap items-end justify-between gap-4"><div><div className="eyebrow">Threat overview</div><h1 className="mt-2 text-3xl font-bold">SENTRIX operations</h1><p className="mt-2 muted">Exposure and review activity from saved imported and simulated records.</p></div><div className="flex flex-wrap gap-3"><Link href="/monitoring" className="btn btn-secondary">Social &amp; apps</Link><Link href="/domains" className="btn btn-secondary">Website &amp; domain analysis</Link><Link href="/brands/new" className="btn btn-primary">Add brand</Link></div></header>
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><div className="surface p-5"><div className="eyebrow">Brand profiles</div><div className="mt-3 text-3xl font-bold">{brands.length}</div><p className="mt-1 text-xs muted">{activeBrands} configured for monitoring</p></div><div className="surface p-5"><div className="eyebrow">Open findings</div><div className="mt-3 text-3xl font-bold">{activeFindings.length}</div><p className="mt-1 text-xs muted">From the selected organization’s saved records</p></div><div className="surface p-5"><div className="eyebrow">Critical or high</div><div className="mt-3 text-3xl font-bold">{criticalHigh.length}</div><p className="mt-1 text-xs muted">Open findings requiring priority review</p></div><div className="surface p-5"><div className="eyebrow">Open investigations</div><div className="mt-3 text-3xl font-bold">{openInvestigations}</div><p className="mt-1 text-xs muted">With persistent analyst notes</p></div></div>
-    <div className="mt-5 grid gap-5 lg:grid-cols-2"><ExposureGauge value={aggregateExposure(activeFindings)} /><SeverityGauge counts={counts} /></div>
-    <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><div className="surface p-5"><div className="eyebrow">Social records</div><div className="mt-2 text-2xl font-bold">{sourceCounts.SOCIAL}</div></div><div className="surface p-5"><div className="eyebrow">App listings</div><div className="mt-2 text-2xl font-bold">{sourceCounts.MOBILE_APP}</div></div><div className="surface p-5"><div className="eyebrow">Domains &amp; websites</div><div className="mt-2 text-2xl font-bold">{sourceCounts.DOMAIN}</div></div><div className="surface p-5"><div className="eyebrow">Simulated findings</div><div className="mt-2 text-2xl font-bold">{simulated}</div><p className="mt-1 text-xs muted">Explicit demo records in saved findings</p></div></section>
-    <div className="mt-5 rounded-lg border border-amber-300/20 bg-amber-300/5 p-4 text-sm"><strong>Source status:</strong> No live external connectors are configured. Social and app scans analyze imported or simulated records; domain analysis only parses submitted URLs and metadata locally.</div>
-    <section className="mt-7 surface p-6"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Brand portfolio</h2><Link className="text-sm text-cyan" href="/brands">Manage all brands →</Link></div><div className="mt-4 divide-y divide-line">{brands.map(brand => <Link className="flex flex-wrap items-center justify-between gap-2 py-4 hover:text-cyan" key={brand.id} href={`/brands/${brand.id}`}><span><span className="font-semibold">{brand.name}</span><span className="ml-3 text-sm muted">{brand.industry.replaceAll('_', ' ')}</span></span><span className="text-xs muted">{brand.monitoringConfiguration.enabled ? 'Monitoring enabled' : 'Monitoring paused'} · View profile →</span></Link>)}</div>{brands.length === 0 && <p className="mt-4 text-sm muted">Create a brand profile to configure official assets.</p>}</section>
-    <section className="mt-7 surface p-6"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Recent findings</h2><Link className="text-sm text-cyan" href="/findings">Open findings →</Link></div><div className="mt-4 divide-y divide-line">{findings.slice(0, 8).map(finding => <Link href={finding.source === 'DOMAIN' || finding.source === 'WEBSITE' ? '/domains' : '/monitoring'} key={finding.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm hover:text-cyan"><span>{finding.title}<span className="ml-2 text-xs muted">{finding.evidence.find(value => value.startsWith('Record origin:'))?.replace('Record origin: ', '')}</span></span><span className="text-xs muted">{finding.severity} · {finding.riskScore}/100</span></Link>)}</div>{findings.length === 0 && <p className="mt-4 text-sm muted">No findings are saved. Add a brand and run an imported or simulated scan.</p>}</section>
+  const monitoredBrands = brands.filter(brand => brand.monitoringConfiguration.enabled).length;
+  const demoFindings = findings.filter(item => item.evidence.some(value => value === 'Record origin: DEMO')).length;
+  const exposure = aggregateExposure(activeFindings);
+  const brandsById = new Map(brands.map(brand => [brand.id, brand.name]));
+  const latestFindings = [...findings].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
+
+  return <div className="page-shell">
+    <header className="dashboard-hero">
+      <div className="relative z-10 max-w-3xl">
+        <p className="eyebrow">Your workspace</p>
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">A clearer view of brand risk</h1>
+        <p className="mt-3 max-w-2xl text-base leading-7 text-slate-300">See what has been flagged, decide what needs a closer look, and keep your brand records in one place.</p>
+        <div className="mt-6 flex flex-wrap gap-3"><Link href="/findings" className="btn btn-primary">Review findings <span aria-hidden="true">→</span></Link><Link href="/brands/new" className="btn btn-secondary">Add a brand</Link></div>
+      </div>
+      <div className="hero-status"><span className="status-pulse" aria-hidden="true" /><span>{activeFindings.length ? `${activeFindings.length} open ${activeFindings.length === 1 ? 'item' : 'items'} to review` : 'No open items to review'}</span></div>
+    </header>
+
+    <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Workspace summary">
+      <MetricCard label="Open findings" value={activeFindings.length} detail="Items not yet resolved" tone="cyan" />
+      <MetricCard label="Priority reviews" value={priorityFindings.length} detail="Critical or high severity" tone="rose" />
+      <MetricCard label="Open investigations" value={openInvestigations} detail="Cases still being worked" tone="amber" />
+      <MetricCard label="Monitored brands" value={monitoredBrands} detail={`${brands.length} ${brands.length === 1 ? 'brand profile' : 'brand profiles'} in your workspace`} tone="violet" />
+    </section>
+
+    <section className="mt-6 grid gap-5 xl:grid-cols-[1.15fr_.85fr]" aria-label="Finding visualizations">
+      <SeverityBreakdown findings={activeFindings} />
+      <SourceBreakdown findings={findings} />
+    </section>
+
+    <section className="mt-6 grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
+      <div className="surface overflow-hidden">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line p-5 sm:p-6"><div><p className="eyebrow">The latest</p><h2 className="mt-2 text-lg font-semibold text-white">Recent findings</h2><p className="mt-1 text-sm muted">The newest records saved to this workspace.</p></div><Link className="quiet-link text-sm" href="/findings">All findings <span aria-hidden="true">→</span></Link></div>
+        {latestFindings.length ? <ul className="divide-y divide-line">{latestFindings.map(finding => <li key={finding.id}><Link href={finding.source === 'DOMAIN' || finding.source === 'WEBSITE' ? '/domains' : '/monitoring'} className="finding-row"><span className="min-w-0"><span className="block truncate font-medium text-white">{finding.title}</span><span className="mt-1 block truncate text-xs muted">{brandsById.get(finding.brandId) ?? 'Unknown brand'} <span aria-hidden="true">·</span> {sourceNames[finding.source]} <span aria-hidden="true">·</span> {finding.affectedEntity}</span></span><span className={`score-pill score-${finding.severity.toLowerCase()}`} aria-label={`${scoreLabel(finding.riskScore)} severity, score ${finding.riskScore}`}>{finding.riskScore}</span></Link></li>)}</ul> : <div className="p-8"><p className="font-medium text-white">Your findings will show up here</p><p className="mt-1 text-sm muted">Start with a brand profile, then analyze records you want to review.</p><Link className="quiet-link mt-4 inline-flex text-sm" href="/brands/new">Create a brand profile <span aria-hidden="true">→</span></Link></div>}
+      </div>
+
+      <div className="space-y-5">
+        <section className="surface p-5 sm:p-6" aria-labelledby="exposure-heading"><p className="eyebrow">A prioritization aid</p><h2 id="exposure-heading" className="mt-2 text-lg font-semibold text-white">Exposure index</h2><div className="mt-5 flex items-end gap-3"><span className="text-5xl font-semibold tracking-tight text-white">{exposure}</span><span className="pb-1 text-sm muted">out of 100</span><span className="ml-auto rounded-full border border-line px-3 py-1 text-xs font-medium text-slate-300">{scoreLabel(exposure)} priority</span></div><div className="mt-4 chart-track chart-track-tall" role="progressbar" aria-label="Exposure index" aria-valuemin={0} aria-valuemax={100} aria-valuenow={exposure}><div className="chart-fill bg-gradient-to-r from-teal-300 via-amber-300 to-rose-400" style={{ width: `${exposure}%` }} /></div><p className="mt-4 text-xs leading-5 muted">A simple review score based on the strongest open finding and how many source types also raised a concern. It is not a probability.</p></section>
+        <section className="source-note"><span className="source-note-icon" aria-hidden="true">i</span><p><strong className="font-semibold text-slate-200">About these records</strong><br />{demoFindings ? `${demoFindings} of ${findings.length} saved findings are labeled as demo data. ` : ''}No live monitoring connectors are configured. Scans use records you import or clearly labeled examples; website analysis checks only the details you submit.</p></section>
+      </div>
+    </section>
+
+    <section className="mt-6 surface p-5 sm:p-6" aria-labelledby="brands-heading">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="eyebrow">Your portfolio</p><h2 id="brands-heading" className="mt-2 text-lg font-semibold text-white">Brand profiles</h2><p className="mt-1 text-sm muted">Official details help you review suspicious lookalikes.</p></div><Link className="quiet-link text-sm" href="/brands">Manage brands <span aria-hidden="true">→</span></Link></div>
+      {brands.length ? <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{brands.slice(0, 6).map(brand => <Link key={brand.id} href={`/brands/${brand.id}`} className="brand-card"><span className="brand-avatar" aria-hidden="true">{brand.name.trim().charAt(0).toUpperCase()}</span><span className="min-w-0 flex-1"><span className="block truncate font-medium text-white">{brand.name}</span><span className="mt-1 block truncate text-xs muted">{brand.domains[0] || brand.industry.replaceAll('_', ' ')}</span></span><span className={`brand-state ${brand.monitoringConfiguration.enabled ? 'brand-state-on' : ''}`}>{brand.monitoringConfiguration.enabled ? 'On' : 'Paused'}</span></Link>)}</div> : <div className="mt-5 rounded-xl border border-dashed border-line p-6 text-center"><p className="font-medium text-white">Add your first brand profile</p><p className="mt-1 text-sm muted">Keep verified domains, social accounts, and apps together.</p><Link className="btn btn-primary mt-4 inline-block" href="/brands/new">Create profile</Link></div>}
+    </section>
   </div>;
 }
