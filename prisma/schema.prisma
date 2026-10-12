@@ -1,20 +1,178 @@
-generator client { provider = "prisma-client-js" }
-datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+generator client {
+  provider = "prisma-client-js"
+}
 
-enum Industry { EDTECH FINTECH ECOMMERCE ENTERTAINMENT HEALTHCARE TECHNOLOGY_SAAS TRAVEL TELECOMMUNICATIONS CONSUMER_GOODS_FASHION GOVERNMENT_PUBLIC_SERVICES }
-enum Severity { CRITICAL HIGH MODERATE LOW }
-enum FindingStatus { NEW INVESTIGATING RESOLVED FALSE_POSITIVE }
-model Organisation { id String @id @default(cuid()) name String createdAt DateTime @default(now()) brands Brand[] users User[] auditEvents AuditEvent[] }
-model User { id String @id @default(cuid()) organisationId String organisation Organisation @relation(fields:[organisationId], references:[id]) email String role String @default("analyst") createdAt DateTime @default(now()) }
-model Brand { id String @id @default(cuid()) organisationId String organisation Organisation @relation(fields:[organisationId], references:[id]) name String aliases Json description String? logoUrl String? industry Industry subcategory String? websiteUrl String? domains Json socialProfiles Json keywords Json impersonationIndicators Json mobileApplications Json officialAssets OfficialAsset[] monitoringConfiguration MonitoringConfiguration? findings Finding[] createdAt DateTime @default(now()) updatedAt DateTime @updatedAt @@index([organisationId]) }
-model OfficialAsset { id String @id @default(cuid()) brandId String brand Brand @relation(fields:[brandId], references:[id]) type String url String label String? verified Boolean @default(false) }
-model MonitoringConfiguration { id String @id @default(cuid()) brandId String @unique brand Brand @relation(fields:[brandId], references:[id]) enabled Boolean @default(true) modules Json rules Json frequency String @default("daily") }
-model MonitoringJob { id String @id @default(cuid()) brandId String startedAt DateTime? completedAt DateTime? status String @default("queued") }
-model Finding { id String @id @default(cuid()) organisationId String brandId String category String source String affectedEntity String title String description String sourceUrl String? evidence Json detectionIndicators Json riskScore Int severity Severity confidence Int status FindingStatus @default(NEW) createdAt DateTime @default(now()) updatedAt DateTime @updatedAt evidences Evidence[] investigations Investigation[] riskAssessment RiskAssessment? }
-model Evidence { id String @id @default(cuid()) findingId String finding Finding @relation(fields:[findingId], references:[id]) kind String value String capturedAt DateTime @default(now()) }
-model RiskAssessment { id String @id @default(cuid()) findingId String @unique score Int rationale String? createdAt DateTime @default(now()) }
-model Investigation { id String @id @default(cuid()) findingId String finding Finding @relation(fields:[findingId], references:[id]) assigneeId String? status String @default("open") notes InvestigationNote[] }
-model InvestigationNote { id String @id @default(cuid()) investigationId String investigation Investigation @relation(fields:[investigationId], references:[id]) authorId String body String createdAt DateTime @default(now()) }
-model StatusHistory { id String @id @default(cuid()) findingId String status String changedBy String createdAt DateTime @default(now()) }
-model ResponseAction { id String @id @default(cuid()) findingId String action String status String @default("pending") createdAt DateTime @default(now()) }
-model AuditEvent { id String @id @default(cuid()) organisationId String action String entityType String entityId String? metadata Json createdAt DateTime @default(now()) }
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Industry {
+  EDTECH
+  FINTECH
+  ECOMMERCE
+  ENTERTAINMENT
+  HEALTHCARE
+  TECHNOLOGY_SAAS
+  TRAVEL
+  TELECOMMUNICATIONS
+  CONSUMER_GOODS_FASHION
+  GOVERNMENT_PUBLIC_SERVICES
+}
+enum Severity {
+  CRITICAL
+  HIGH
+  MODERATE
+  LOW
+}
+enum FindingStatus {
+  NEW
+  INVESTIGATING
+  RESOLVED
+  FALSE_POSITIVE
+}
+
+model Organisation {
+  id String @id @default(cuid())
+  name String
+  createdAt DateTime @default(now())
+  brands Brand[]
+  users User[]
+  auditEvents AuditEvent[]
+}
+model User {
+  id String @id @default(cuid())
+  organisationId String
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+  email String
+  role String @default("analyst")
+  createdAt DateTime @default(now())
+}
+model Brand {
+  id String @id @default(cuid())
+  organisationId String
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+  name String
+  aliases Json
+  description String?
+  logoUrl String?
+  industry Industry
+  subcategory String?
+  websiteUrl String?
+  domains Json
+  socialProfiles Json
+  keywords Json
+  impersonationIndicators Json
+  mobileApplications Json
+  officialAssets OfficialAsset[]
+  monitoringConfiguration MonitoringConfiguration?
+  findings Finding[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([organisationId])
+}
+model OfficialAsset {
+  id String @id @default(cuid())
+  brandId String
+  brand Brand @relation(fields: [brandId], references: [id])
+  type String
+  url String
+  label String?
+  verified Boolean @default(false)
+  verificationSource String @default("user-provided")
+}
+model MonitoringConfiguration {
+  id String @id @default(cuid())
+  brandId String @unique
+  brand Brand @relation(fields: [brandId], references: [id])
+  enabled Boolean @default(true)
+  modules Json
+  rules Json
+  frequency String @default("daily")
+}
+model MonitoringJob {
+  id String @id @default(cuid())
+  brandId String
+  startedAt DateTime?
+  completedAt DateTime?
+  status String @default("queued")
+}
+model Finding {
+  id String @id @default(cuid())
+  organisationId String
+  brandId String
+  brand Brand @relation(fields: [brandId], references: [id])
+  category String
+  source String
+  affectedEntity String
+  title String
+  description String
+  sourceUrl String?
+  evidence Json
+  detectionIndicators Json
+  riskScore Int
+  severity Severity
+  confidence Int
+  status FindingStatus @default(NEW)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  evidences Evidence[]
+  investigations Investigation[]
+  riskAssessment RiskAssessment?
+}
+model Evidence {
+  id String @id @default(cuid())
+  findingId String
+  finding Finding @relation(fields: [findingId], references: [id])
+  kind String
+  value String
+  capturedAt DateTime @default(now())
+}
+model RiskAssessment {
+  id String @id @default(cuid())
+  findingId String @unique
+  finding Finding @relation(fields: [findingId], references: [id])
+  score Int
+  rationale String?
+  createdAt DateTime @default(now())
+}
+model Investigation {
+  id String @id @default(cuid())
+  findingId String
+  finding Finding @relation(fields: [findingId], references: [id])
+  assigneeId String?
+  status String @default("open")
+  notes InvestigationNote[]
+}
+model InvestigationNote {
+  id String @id @default(cuid())
+  investigationId String
+  investigation Investigation @relation(fields: [investigationId], references: [id])
+  authorId String
+  body String
+  createdAt DateTime @default(now())
+}
+model StatusHistory {
+  id String @id @default(cuid())
+  findingId String
+  status String
+  changedBy String
+  createdAt DateTime @default(now())
+}
+model ResponseAction {
+  id String @id @default(cuid())
+  findingId String
+  action String
+  status String @default("pending")
+  createdAt DateTime @default(now())
+}
+model AuditEvent {
+  id String @id @default(cuid())
+  organisationId String
+  organisation Organisation @relation(fields: [organisationId], references: [id])
+  action String
+  entityType String
+  entityId String?
+  metadata Json
+  createdAt DateTime @default(now())
+}
