@@ -49,11 +49,11 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
   ];
 
   const content = (
-    <div className="flex h-full flex-col border-r border-indigo-400/15 bg-[#0a1020]">
+    <div className="flex h-full flex-col border-r border-[#2a3543] bg-[#0a1017]">
       {/* Brand Header */}
       <div className="flex h-16 items-center justify-between border-b border-indigo-400/15 px-3">
         <Link href="/" className="flex items-center gap-2.5 overflow-hidden">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-300 to-indigo-400 text-[#08101d] shadow-[0_0_16px_rgba(103,232,249,0.2)]">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#d7a93a] text-[#10151b] shadow-[0_0_16px_rgba(215,169,58,0.16)]">
             <Shield className="h-5 w-5 fill-current stroke-[#08101d] stroke-2" />
           </div>
           {!isCollapsed && (
@@ -61,7 +61,7 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
               <span className="text-base font-extrabold tracking-wider text-slate-100">
                 SENTRIX
               </span>
-              <span className="font-mono text-[10px] tracking-tight text-cyan-300">
+              <span className="font-mono text-[10px] tracking-tight text-[#d7a93a]">
                 CIPHER • HacXLerate
               </span>
             </div>
@@ -71,7 +71,7 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
           onClick={() => setIsCollapsed(!isCollapsed)}
           aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-pressed={isCollapsed}
-          className="hidden rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-indigo-400/10 hover:text-cyan-200 md:flex"
+          className="hidden rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-[#d7a93a]/10 hover:text-[#f1c95d] md:flex"
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -94,14 +94,14 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
               onClick={() => setIsMobileOpen(false)}
               className={`group flex items-center gap-3 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
                 isActive
-                  ? "border-cyan-300/35 bg-cyan-300/10 text-cyan-200 shadow-[inset_3px_0_0_#67e8f9]"
-                  : "border-transparent text-slate-400 hover:border-indigo-300/15 hover:bg-indigo-400/10 hover:text-slate-100"
+                  ? "border-[#d7a93a]/35 bg-[#d7a93a]/10 text-[#f1c95d] shadow-[inset_3px_0_0_#d7a93a]"
+                  : "border-transparent text-slate-400 hover:border-[#d7a93a]/15 hover:bg-[#d7a93a]/[0.07] hover:text-slate-100"
               }`}
               title={isCollapsed ? item.label : undefined}
             >
               <Icon
                 className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
-                  isActive ? "text-cyan-300" : "text-slate-500"
+                  isActive ? "text-[#f1c95d]" : "text-slate-500"
                 }`}
               />
               {!isCollapsed && <span className="truncate">{item.label}</span>}
@@ -117,7 +117,7 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
 
       {/* Live Monitoring Indicator */}
       {!isCollapsed && (
-        <div className="m-2 rounded-lg border border-indigo-300/15 bg-indigo-400/[0.07] p-3">
+        <div className="m-2 rounded-lg border border-[#2a3543] bg-[#111923] p-3">
           <div className="flex items-center gap-2 mb-1">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -134,9 +134,9 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
       )}
 
       {/* Footer System Status */}
-      <div className="flex items-center justify-between border-t border-indigo-400/15 p-3 text-[10px] text-slate-500">
+      <div className="flex items-center justify-between border-t border-[#2a3543] p-3 text-[10px] text-slate-500">
         {!isCollapsed && <span>SENTRIX v1.0 • Enterprise DRP</span>}
-        <Radio className="h-3.5 w-3.5 animate-pulseSubtle text-cyan-300" />
+        <Radio className="h-3.5 w-3.5 animate-pulseSubtle text-[#d7a93a]" />
       </div>
     </div>
   );

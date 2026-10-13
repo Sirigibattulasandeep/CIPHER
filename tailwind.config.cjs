@@ -11,29 +11,29 @@ module.exports = {
     extend: {
       colors: {
         sentrix: {
-          bg: "#080D18", // Main background
-          sidebar: "#0A1120", // Sidebar background
-          surface: "#0D1422", // Secondary background
-          card: "#121C2D", // Card background
-          hover: "#18263A", // Hover background
-          cardHover: "#18263A",
-          border: "#26354B", // Enterprise border
-          borderLight: "#334666",
-          cyan: "#22D3EE", // Primary cyan
-          blue: "#3B82F6", // Primary blue
-          purple: "#818CF8", // Accent purple
-          teal: "#22D3EE",
-          text: "#F1F5F9", // Main text
-          secondaryText: "#A7B4C8", // Secondary text
-          muted: "#8190A5", // Muted text
-          success: "#34D399", // Success / Safe
-          safe: "#34D399",
-          info: "#60A5FA", // Informational
-          warning: "#FBBF24", // Warning
-          medium: "#FBBF24",
-          high: "#FB923C", // High risk
-          critical: "#F87171", // Critical risk
-          low: "#22D3EE",
+          bg: "#0B1118",
+          sidebar: "#0A1017",
+          surface: "#111923",
+          card: "#171F2B",
+          hover: "#222C38",
+          cardHover: "#222C38",
+          border: "#2A3543",
+          borderLight: "#3A4757",
+          cyan: "#D7A93A",
+          blue: "#7D9BB8",
+          purple: "#9B8AB9",
+          teal: "#B99132",
+          text: "#EEF1F2",
+          secondaryText: "#C4CBD2",
+          muted: "#8D9AA6",
+          success: "#69B99C",
+          safe: "#69B99C",
+          info: "#82A5C5",
+          warning: "#D7A93A",
+          medium: "#D7A93A",
+          high: "#D48757",
+          critical: "#D76E6E",
+          low: "#70B7A8",
         },
       },
       fontFamily: {

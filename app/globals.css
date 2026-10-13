@@ -2,13 +2,15 @@
 @config "../tailwind.config.cjs";
 
 :root {
-  --background: #080D18;
-  --foreground: #F1F5F9;
+  --background: #0B1118;
+  --foreground: #EEF1F2;
 }
 
 body {
-  background-color: #080D18;
-  color: #F1F5F9;
+  background:
+    radial-gradient(circle at 80% -20%, rgba(111, 130, 148, 0.09), transparent 36rem),
+    #0B1118;
+  color: #EEF1F2;
   font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -16,8 +18,8 @@ body {
 }
 
 ::selection {
-  background-color: rgba(34, 211, 238, 0.25);
-  color: #22D3EE;
+  background-color: rgba(215, 169, 58, 0.24);
+  color: #F1C95D;
 }
 
 /* Custom dark scrollbar */
@@ -27,37 +29,37 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #080D18;
+  background: #0B1118;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #243249;
+  background: #354251;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334666;
+  background: #4A5969;
 }
 
 /* Glassmorphism & Enterprise Surface tokens */
 .surface-card {
-  background: #121C2D;
-  border: 1px solid #243249;
-  border-radius: 0.75rem;
+  background: #171F2B;
+  border: 1px solid #2A3543;
+  border-radius: 0.55rem;
 }
 
 .surface-card:hover {
-  border-color: #334666;
+  border-color: #3A4757;
 }
 
 .surface-elevated {
-  background: #121C2D;
-  border: 1px solid #243249;
+  background: #171F2B;
+  border: 1px solid #2A3543;
 }
 
 .glow-cyan-border {
-  border-color: rgba(34, 211, 238, 0.4);
-  box-shadow: 0 0 15px -3px rgba(34, 211, 238, 0.15);
+  border-color: rgba(215, 169, 58, 0.42);
+  box-shadow: 0 0 15px -3px rgba(215, 169, 58, 0.12);
 }
 
 .glow-safe-border {
@@ -81,7 +83,7 @@ button:active {
 
 /* Lightweight Skeleton Shimmer */
 .skeleton-box {
-  background: linear-gradient(90deg, #0D1422 25%, #18263D 50%, #0D1422 75%);
+  background: linear-gradient(90deg, #111923 25%, #202B38 50%, #111923 75%);
   background-size: 200% 100%;
   animation: shimmer 1.8s infinite;
 }
