@@ -6,6 +6,8 @@ import { useBrand } from "@/lib/brand-context";
 import { Finding, Severity } from "@/types";
 import { RiskScoreBadge } from "@/components/shared/risk-score-badge";
 import { formatTimeAgo } from "@/lib/utils";
+import { resilientFetch } from "@/lib/api-client";
+import { playCyberClick, playCyberAlert } from "@/lib/sound";
 import {
   ShieldAlert,
   FolderKanban,
@@ -51,14 +53,12 @@ export default function DashboardPage() {
     setIsLoading(true);
     try {
       const [analyticsRes, findingsRes] = await Promise.all([
-        fetch(`/api/analytics?brandId=${selectedBrandId}`),
-        fetch(`/api/findings?brandId=${selectedBrandId}`),
+        resilientFetch(`/api/analytics?brandId=${selectedBrandId}`),
+        resilientFetch<Finding[]>(`/api/findings?brandId=${selectedBrandId}`),
       ]);
-      const analyticsJson = await analyticsRes.json();
-      const findingsJson = await findingsRes.json();
 
-      if (analyticsJson.success) setMetrics(analyticsJson.data);
-      if (findingsJson.success) setRecentFindings(findingsJson.data.slice(0, 5));
+      if (analyticsRes.data) setMetrics(analyticsRes.data);
+      if (findingsRes.data) setRecentFindings(findingsRes.data.slice(0, 5));
     } catch (err) {
       console.warn("Error fetching dashboard data:", err);
     } finally {
@@ -133,7 +133,7 @@ export default function DashboardPage() {
             <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-sentrix-cyan/10 text-sentrix-cyan border border-sentrix-cyan/30 font-bold">
               Active Scope
             </span>
-            <span className="text-xs text-sentrix-muted">
+            <span className="text-xs text-sentrix-muted privacy-sensitive">
               {selectedBrand ? `${selectedBrand.name} (${selectedBrand.industry})` : "All Registered Brands (Unified Enterprise View)"}
             </span>
           </div>
@@ -531,14 +531,14 @@ export default function DashboardPage() {
                   className="hover:bg-sentrix-surface/60 transition-colors group"
                 >
                   <td className="py-3 px-3">
-                    <div className="font-semibold text-sentrix-text group-hover:text-sentrix-cyan transition-colors">
+                    <div className="font-semibold text-sentrix-text group-hover:text-sentrix-cyan transition-colors privacy-sensitive">
                       {finding.entityName}
                     </div>
-                    <div className="text-[11px] text-sentrix-muted truncate max-w-xs">
+                    <div className="text-[11px] text-sentrix-muted truncate max-w-xs privacy-sensitive">
                       {finding.title}
                     </div>
                   </td>
-                  <td className="py-3 px-3 whitespace-nowrap text-sentrix-text">
+                  <td className="py-3 px-3 whitespace-nowrap text-sentrix-text privacy-sensitive">
                     {finding.brandName}
                   </td>
                   <td className="py-3 px-3 whitespace-nowrap">

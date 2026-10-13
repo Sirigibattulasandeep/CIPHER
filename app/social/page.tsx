@@ -7,6 +7,8 @@ import { Finding, Severity } from "@/types";
 import { RiskScoreBadge } from "@/components/shared/risk-score-badge";
 import { StatusSelect } from "@/components/shared/status-select";
 import { formatTimeAgo } from "@/lib/utils";
+import { resilientFetch } from "@/lib/api-client";
+import { playCyberClick } from "@/lib/sound";
 import {
   AtSign,
   Search,
@@ -35,10 +37,9 @@ export default function SocialMonitoringPage() {
       const url = `/api/findings?sourceModule=social${
         selectedBrandId !== "all" ? `&brandId=${selectedBrandId}` : ""
       }`;
-      const res = await fetch(url);
-      const json = await res.json();
-      if (json.success) {
-        setFindings(json.data);
+      const res = await resilientFetch<Finding[]>(url);
+      if (res.data) {
+        setFindings(res.data.filter((f) => f.sourceModule === "social"));
       }
     } catch (err) {
       console.warn("Could not fetch social findings:", err);

@@ -7,6 +7,8 @@ import { Finding } from "@/types";
 import { RiskScoreBadge } from "@/components/shared/risk-score-badge";
 import { StatusSelect } from "@/components/shared/status-select";
 import { formatTimeAgo } from "@/lib/utils";
+import { resilientFetch } from "@/lib/api-client";
+import { playCyberClick } from "@/lib/sound";
 import {
   Smartphone,
   Search,
@@ -33,10 +35,9 @@ export default function AppMonitoringPage() {
       const url = `/api/findings?sourceModule=app${
         selectedBrandId !== "all" ? `&brandId=${selectedBrandId}` : ""
       }`;
-      const res = await fetch(url);
-      const json = await res.json();
-      if (json.success) {
-        setFindings(json.data);
+      const res = await resilientFetch<Finding[]>(url);
+      if (res.data) {
+        setFindings(res.data.filter((f) => f.sourceModule === "app"));
       }
     } catch (err) {
       console.warn("Could not fetch app findings:", err);

@@ -6,6 +6,8 @@ import { useBrand } from "@/lib/brand-context";
 import { Investigation, FindingStatus } from "@/types";
 import { RiskScoreBadge } from "@/components/shared/risk-score-badge";
 import { getStatusBadgeClass, formatTimeAgo } from "@/lib/utils";
+import { resilientFetch } from "@/lib/api-client";
+import { playCyberClick } from "@/lib/sound";
 import {
   FolderKanban,
   Search,
@@ -33,10 +35,9 @@ export default function InvestigationsPage() {
       const url = `/api/investigations?${
         selectedBrandId !== "all" ? `brandId=${selectedBrandId}` : ""
       }`;
-      const res = await fetch(url);
-      const json = await res.json();
-      if (json.success) {
-        setInvestigations(json.data);
+      const res = await resilientFetch<Investigation[]>(url);
+      if (res.data) {
+        setInvestigations(res.data);
       }
     } catch (err) {
       console.warn("Could not load investigations:", err);

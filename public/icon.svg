@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#171F2B" />
+      <stop offset="100%" stop-color="#0B1118" />
+    </radialGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F1C95D" />
+      <stop offset="50%" stop-color="#D7A93A" />
+      <stop offset="100%" stop-color="#8E6A1B" />
+    </linearGradient>
+    <linearGradient id="innerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#22D3EE" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#0B1118" stop-opacity="0.3" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background rounded canvas -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" stroke="#2A3543" stroke-width="4"/>
+
+  <!-- Subtle Cyber Grid -->
+  <path d="M64 160h384M64 256h384M64 352h384M160 64v384M256 64v384M352 64v384" stroke="#1F2A38" stroke-width="1.5" stroke-dasharray="4 6"/>
+
+  <!-- Radar Pulse Rings -->
+  <circle cx="256" cy="256" r="180" stroke="#D7A93A" stroke-width="1.5" stroke-opacity="0.25" stroke-dasharray="6 8" />
+  <circle cx="256" cy="256" r="120" stroke="#22D3EE" stroke-width="1.5" stroke-opacity="0.2" />
+
+  <!-- Outer Shield Aura -->
+  <path d="M256 84 L396 148 C396 296 256 396 256 396 C256 396 116 296 116 148 Z" fill="none" stroke="url(#shieldGrad)" stroke-width="6" filter="url(#glow)"/>
+
+  <!-- Inner High-Tech Shield -->
+  <path d="M256 104 L376 160 C376 280 256 372 256 372 C256 372 136 280 136 160 Z" fill="#111923" stroke="#D7A93A" stroke-width="3"/>
+
+  <!-- Cyber Node Core & Chevron -->
+  <path d="M256 140 L340 180 C340 264 256 336 256 336 C256 336 172 264 172 180 Z" fill="url(#innerGrad)"/>
+
+  <!-- Stylized Monogram S / Shield Wing -->
+  <path d="M256 172 L296 196 L296 244 L256 268 L216 244 L216 196 Z" fill="#D7A93A" stroke="#F1C95D" stroke-width="2"/>
+  <circle cx="256" cy="232" r="10" fill="#0B1118" stroke="#22D3EE" stroke-width="3"/>
+
+  <!-- Telemetry Scan Beams -->
+  <line x1="256" y1="232" x2="350" y2="180" stroke="#22D3EE" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="350" cy="180" r="4" fill="#22D3EE"/>
+  <line x1="256" y1="232" x2="162" y2="180" stroke="#D7A93A" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="162" cy="180" r="4" fill="#D7A93A"/>
+  <line x1="256" y1="232" x2="256" y2="340" stroke="#69B99C" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="256" cy="340" r="4" fill="#69B99C"/>
+</svg>
+

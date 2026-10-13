@@ -1,0 +1,62 @@
+{
+  "name": "SENTRIX Digital Risk Protection",
+  "short_name": "SENTRIX",
+  "description": "AI-Powered Universal Digital Risk Protection Platform. Detect Threats. Defend Trust.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
+  "orientation": "any",
+  "background_color": "#0B1118",
+  "theme_color": "#0B1118",
+  "categories": [
+    "security",
+    "business",
+    "utilities",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Threat Radar",
+      "short_name": "Radar",
+      "description": "View live perimeter telemetry across vectors",
+      "url": "/radar",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Findings Repository",
+      "short_name": "Findings",
+      "description": "Triage digital impersonation findings",
+      "url": "/findings",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "AI Intelligence Analysis",
+      "short_name": "AI Intel",
+      "description": "Analyze threats with AI Copilot",
+      "url": "/analysis",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Domain Monitoring",
+      "short_name": "Domains",
+      "description": "Review typosquatting & rogue domains",
+      "url": "/domains",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    }
+  ]
+}
+

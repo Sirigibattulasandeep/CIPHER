@@ -7,6 +7,8 @@ import { Finding, SourceModule, Severity, FindingStatus } from "@/types";
 import { RiskScoreBadge } from "@/components/shared/risk-score-badge";
 import { StatusSelect } from "@/components/shared/status-select";
 import { formatTimeAgo } from "@/lib/utils";
+import { resilientFetch } from "@/lib/api-client";
+import { playCyberClick } from "@/lib/sound";
 import {
   AlertTriangle,
   Search,
@@ -19,6 +21,9 @@ import {
   Smartphone,
   Globe,
   Layers,
+  ChevronLeft,
+  ChevronRight,
+  ShieldAlert,
 } from "lucide-react";
 
 export default function FindingsPage() {
@@ -31,16 +36,19 @@ export default function FindingsPage() {
   const [selectedSeverity, setSelectedSeverity] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
 
+  // Pagination for scalability
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
   const fetchFindings = async () => {
     setIsLoading(true);
     try {
       const url = `/api/findings?${
         selectedBrandId !== "all" ? `brandId=${selectedBrandId}` : ""
       }`;
-      const res = await fetch(url);
-      const json = await res.json();
-      if (json.success) {
-        setFindings(json.data);
+      const res = await resilientFetch<Finding[]>(url);
+      if (res.data) {
+        setFindings(res.data);
       }
     } catch (err) {
       console.warn("Could not fetch findings:", err);
@@ -51,6 +59,7 @@ export default function FindingsPage() {
 
   useEffect(() => {
     fetchFindings();
+    setCurrentPage(1);
   }, [selectedBrandId]);
 
   const handleStatusChange = async (findingId: string, newStatus: FindingStatus) => {
@@ -63,12 +72,17 @@ export default function FindingsPage() {
       setFindings((prev) =>
         prev.map((f) => (f.id === findingId ? { ...f, status: newStatus } : f))
       );
+      playCyberClick();
     } catch (err) {
-      alert("Failed to update status.");
+      // Local optimistic update even if network error
+      setFindings((prev) =>
+        prev.map((f) => (f.id === findingId ? { ...f, status: newStatus } : f))
+      );
     }
   };
 
   const handleExportJson = () => {
+    playCyberClick();
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(findings, null, 2));
     const downloadAnchor = document.createElement("a");
     downloadAnchor.setAttribute("href", dataStr);
@@ -94,6 +108,12 @@ export default function FindingsPage() {
 
     return matchesSearch && matchesModule && matchesSeverity && matchesStatus;
   });
+
+  const totalPages = Math.ceil(filteredFindings.length / pageSize) || 1;
+  const paginatedFindings = filteredFindings.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
   const getModuleIcon = (mod: SourceModule) => {
     switch (mod) {
@@ -140,62 +160,81 @@ export default function FindingsPage() {
             <span className="hidden sm:inline">Export JSON</span>
           </button>
           <button
-            onClick={fetchFindings}
+            onClick={() => {
+              playCyberClick();
+              fetchFindings();
+            }}
             disabled={isLoading}
-            className="p-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-muted hover:text-sentrix-text hover:border-sentrix-borderLight transition-colors"
-            title="Refresh findings"
+            className="p-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-muted hover:text-sentrix-text transition-colors"
+            title="Refresh repository"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
           </button>
         </div>
       </div>
 
-      {/* Multi-facet Filter Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-        <div className="relative md:col-span-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-sentrix-muted" />
+      {/* Filter Toolbar */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4 rounded-xl bg-sentrix-card border border-sentrix-border">
+        {/* Search */}
+        <div className="lg:col-span-2 relative">
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-sentrix-muted" />
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search all findings..."
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-text placeholder:text-sentrix-muted focus:outline-none focus:border-sentrix-cyan"
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            placeholder="Filter by indicator, target, entity..."
+            className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-sentrix-surface border border-sentrix-border text-xs text-sentrix-text placeholder-sentrix-muted focus:outline-none focus:border-sentrix-cyan transition-colors"
           />
         </div>
 
-        {/* Module filter */}
+        {/* Vector Module Filter */}
         <select
           value={selectedModule}
-          onChange={(e) => setSelectedModule(e.target.value)}
-          className="px-3 py-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-text focus:outline-none focus:border-sentrix-cyan"
+          onChange={(e) => {
+            setSelectedModule(e.target.value);
+            setCurrentPage(1);
+            playCyberClick();
+          }}
+          className="px-3 py-1.5 rounded-lg bg-sentrix-surface border border-sentrix-border text-xs text-sentrix-text focus:outline-none focus:border-sentrix-cyan"
         >
-          <option value="all">All Modules</option>
-          <option value="social">Social Intelligence</option>
-          <option value="app">Mobile App Sentinel</option>
-          <option value="domain">Domain Radar & Phishing</option>
+          <option value="all">All Threat Vectors</option>
+          <option value="social">Social Networks</option>
+          <option value="app">Mobile App Stores</option>
+          <option value="domain">Website & Domains</option>
         </select>
 
-        {/* Severity filter */}
+        {/* Severity Filter */}
         <select
           value={selectedSeverity}
-          onChange={(e) => setSelectedSeverity(e.target.value)}
-          className="px-3 py-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-text focus:outline-none focus:border-sentrix-cyan"
+          onChange={(e) => {
+            setSelectedSeverity(e.target.value);
+            setCurrentPage(1);
+            playCyberClick();
+          }}
+          className="px-3 py-1.5 rounded-lg bg-sentrix-surface border border-sentrix-border text-xs text-sentrix-text focus:outline-none focus:border-sentrix-cyan"
         >
           <option value="all">All Severities</option>
-          <option value="critical">Critical (&ge; 85)</option>
-          <option value="high">High (65 - 84)</option>
-          <option value="medium">Medium (35 - 64)</option>
-          <option value="low">Low (0 - 34)</option>
+          <option value="critical">Critical Severity</option>
+          <option value="high">High Severity</option>
+          <option value="medium">Medium Severity</option>
+          <option value="low">Low Severity</option>
         </select>
 
-        {/* Status filter */}
+        {/* Status Filter */}
         <select
           value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          className="px-3 py-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-text focus:outline-none focus:border-sentrix-cyan"
+          onChange={(e) => {
+            setSelectedStatus(e.target.value);
+            setCurrentPage(1);
+            playCyberClick();
+          }}
+          className="px-3 py-1.5 rounded-lg bg-sentrix-surface border border-sentrix-border text-xs text-sentrix-text focus:outline-none focus:border-sentrix-cyan"
         >
-          <option value="all">All Statuses</option>
-          <option value="new">New</option>
+          <option value="all">All Workflow Statuses</option>
+          <option value="new">New Finding</option>
           <option value="under_review">Under Review</option>
           <option value="investigating">Investigating</option>
           <option value="confirmed_threat">Confirmed Threat</option>
@@ -206,6 +245,17 @@ export default function FindingsPage() {
 
       {/* Findings Table */}
       <div className="p-5 rounded-xl bg-sentrix-card border border-sentrix-border overflow-hidden">
+        <div className="flex items-center justify-between mb-3 text-xs text-sentrix-muted">
+          <span>
+            Showing <strong>{paginatedFindings.length}</strong> of <strong>{filteredFindings.length}</strong> threat dossiers
+          </span>
+          {filteredFindings.length > 0 && (
+            <span className="font-mono text-[11px]">
+              Page {currentPage} of {totalPages}
+            </span>
+          )}
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -223,17 +273,20 @@ export default function FindingsPage() {
               {isLoading ? (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-sentrix-muted">
-                    Loading findings repository...
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-sentrix-cyan border-t-transparent rounded-full animate-spin" />
+                      Loading findings repository...
+                    </div>
                   </td>
                 </tr>
-              ) : filteredFindings.length === 0 ? (
+              ) : paginatedFindings.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-sentrix-muted">
                     No threat findings match current filter criteria.
                   </td>
                 </tr>
               ) : (
-                filteredFindings.map((finding) => (
+                paginatedFindings.map((finding) => (
                   <tr
                     key={finding.id}
                     className="hover:bg-sentrix-surface/60 transition-colors group"
@@ -247,10 +300,10 @@ export default function FindingsPage() {
                       />
                     </td>
                     <td className="py-3.5 px-3">
-                      <div className="font-bold text-sentrix-text group-hover:text-sentrix-cyan transition-colors max-w-sm truncate">
+                      <div className="font-bold text-sentrix-text group-hover:text-sentrix-cyan transition-colors max-w-sm truncate privacy-sensitive">
                         {finding.title}
                       </div>
-                      <div className="flex items-center gap-1.5 text-[11px] text-sentrix-muted font-mono truncate max-w-sm">
+                      <div className="flex items-center gap-1.5 text-[11px] text-sentrix-muted font-mono truncate max-w-sm privacy-sensitive">
                         <span>{finding.entityName}</span>
                         {finding.entityUrl && (
                           <a
@@ -264,7 +317,7 @@ export default function FindingsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="py-3.5 px-3 whitespace-nowrap font-medium text-sentrix-text">
+                    <td className="py-3.5 px-3 whitespace-nowrap font-medium text-sentrix-text privacy-sensitive">
                       {finding.brandName}
                     </td>
                     <td className="py-3.5 px-3 whitespace-nowrap">
@@ -285,6 +338,7 @@ export default function FindingsPage() {
                     <td className="py-3.5 px-3 whitespace-nowrap text-right">
                       <Link
                         href={`/findings/${finding.id}`}
+                        onClick={() => playCyberClick()}
                         className="inline-flex items-center gap-1 font-semibold text-sentrix-cyan hover:underline"
                       >
                         Inspect <ArrowRight className="w-3.5 h-3.5" />
@@ -296,8 +350,38 @@ export default function FindingsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 mt-3 border-t border-sentrix-border text-xs">
+            <span className="text-sentrix-muted">
+              Showing page {currentPage} of {totalPages}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  playCyberClick();
+                  setCurrentPage((p) => Math.max(1, p - 1));
+                }}
+                disabled={currentPage === 1}
+                className="px-2.5 py-1 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-muted hover:text-sentrix-text disabled:opacity-40 transition-all flex items-center gap-1"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> Previous
+              </button>
+              <button
+                onClick={() => {
+                  playCyberClick();
+                  setCurrentPage((p) => Math.min(totalPages, p + 1));
+                }}
+                disabled={currentPage === totalPages}
+                className="px-2.5 py-1 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-muted hover:text-sentrix-text disabled:opacity-40 transition-all flex items-center gap-1"
+              >
+                Next <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

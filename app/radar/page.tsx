@@ -6,6 +6,8 @@ import { useBrand } from "@/lib/brand-context";
 import { Finding } from "@/types";
 import { RiskScoreBadge } from "@/components/shared/risk-score-badge";
 import { formatTimeAgo } from "@/lib/utils";
+import { resilientFetch } from "@/lib/api-client";
+import { playCyberClick, playCyberAlert } from "@/lib/sound";
 import {
   Radio,
   Search,
@@ -17,6 +19,8 @@ import {
   Smartphone,
   Sparkles,
   ExternalLink,
+  Radar,
+  Zap,
 } from "lucide-react";
 
 export default function ThreatRadarPage() {
@@ -32,10 +36,9 @@ export default function ThreatRadarPage() {
     setIsLoading(true);
     try {
       const url = `/api/findings?${selectedBrandId !== "all" ? `brandId=${selectedBrandId}` : ""}`;
-      const res = await fetch(url);
-      const json = await res.json();
-      if (json.success) {
-        setFindings(json.data);
+      const res = await resilientFetch<Finding[]>(url);
+      if (res.data) {
+        setFindings(res.data);
       }
     } catch (err) {
       console.warn("Could not fetch radar telemetry:", err);
@@ -49,12 +52,15 @@ export default function ThreatRadarPage() {
   }, [selectedBrandId]);
 
   const handleRunRadarSweep = () => {
+    playCyberClick();
     setIsSweeping(true);
     setSweepMessage(null);
     setTimeout(() => {
       setIsSweeping(false);
+      playCyberAlert();
       setSweepMessage("Radar sweep complete: 3 perimeters scanned, 0 new critical threats undetected.");
       setTimeout(() => setSweepMessage(null), 4000);
+      fetchRadarFindings();
     }, 1200);
   };
 
@@ -65,7 +71,13 @@ export default function ThreatRadarPage() {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-xl bg-sentrix-card border border-sentrix-border">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-xl bg-sentrix-card border border-sentrix-border relative overflow-hidden">
+        {/* Subtle Radar Pulse Visual Accent */}
+        <div className="absolute -right-8 -top-8 w-40 h-40 pointer-events-none opacity-20">
+          <div className="w-full h-full rounded-full border border-sentrix-cyan animate-radar-wave" />
+          <div className="w-full h-full rounded-full border border-sentrix-cyan animate-radar-wave [animation-delay:0.8s]" />
+        </div>
+
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="p-1 rounded bg-sentrix-cyan/10 text-sentrix-cyan">
@@ -87,13 +99,16 @@ export default function ThreatRadarPage() {
           <button
             onClick={handleRunRadarSweep}
             disabled={isSweeping}
-            className="px-3.5 py-2 rounded-lg bg-sentrix-cyan text-sentrix-bg text-xs font-bold hover:brightness-110 shadow-glow-sm flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-2 rounded-lg bg-sentrix-cyan text-sentrix-bg text-xs font-bold hover:brightness-110 shadow-glow-sm flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
           >
-            <Radio className={`w-3.5 h-3.5 ${isSweeping ? "animate-spin" : ""}`} />
+            <Zap className={`w-3.5 h-3.5 ${isSweeping ? "animate-spin" : ""}`} />
             <span>{isSweeping ? "Sweeping Radar..." : "Trigger Perimeter Sweep"}</span>
           </button>
           <button
-            onClick={fetchRadarFindings}
+            onClick={() => {
+              playCyberClick();
+              fetchRadarFindings();
+            }}
             disabled={isLoading}
             className="p-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-muted hover:text-sentrix-text transition-colors"
             title="Refresh radar feed"
@@ -113,8 +128,11 @@ export default function ThreatRadarPage() {
       {/* Radar Channel Indicators */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div
-          onClick={() => setActiveVector("social")}
-          className={`p-4 rounded-xl bg-sentrix-card border cursor-pointer transition-all ${
+          onClick={() => {
+            playCyberClick();
+            setActiveVector("social");
+          }}
+          className={`p-4 rounded-xl bg-sentrix-card border cursor-pointer transition-all cyber-card ${
             activeVector === "social"
               ? "border-sentrix-cyan shadow-glow-sm"
               : "border-sentrix-border hover:border-sentrix-borderLight"
@@ -134,8 +152,11 @@ export default function ThreatRadarPage() {
         </div>
 
         <div
-          onClick={() => setActiveVector("app")}
-          className={`p-4 rounded-xl bg-sentrix-card border cursor-pointer transition-all ${
+          onClick={() => {
+            playCyberClick();
+            setActiveVector("app");
+          }}
+          className={`p-4 rounded-xl bg-sentrix-card border cursor-pointer transition-all cyber-card ${
             activeVector === "app"
               ? "border-emerald-400 shadow-glow-safe"
               : "border-sentrix-border hover:border-sentrix-borderLight"
@@ -155,8 +176,11 @@ export default function ThreatRadarPage() {
         </div>
 
         <div
-          onClick={() => setActiveVector("domain")}
-          className={`p-4 rounded-xl bg-sentrix-card border cursor-pointer transition-all ${
+          onClick={() => {
+            playCyberClick();
+            setActiveVector("domain");
+          }}
+          className={`p-4 rounded-xl bg-sentrix-card border cursor-pointer transition-all cyber-card ${
             activeVector === "domain"
               ? "border-purple-400 shadow-glow-sm"
               : "border-sentrix-border hover:border-sentrix-borderLight"
@@ -184,7 +208,10 @@ export default function ThreatRadarPage() {
           </h3>
           {activeVector !== "all" && (
             <button
-              onClick={() => setActiveVector("all")}
+              onClick={() => {
+                playCyberClick();
+                setActiveVector("all");
+              }}
               className="text-xs text-sentrix-cyan hover:underline"
             >
               Show All Vectors
@@ -194,7 +221,8 @@ export default function ThreatRadarPage() {
 
         <div className="space-y-3">
           {isLoading ? (
-            <div className="text-center py-10 text-xs text-sentrix-muted">
+            <div className="text-center py-10 text-xs text-sentrix-muted flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-sentrix-cyan border-t-transparent rounded-full animate-spin" />
               Scanning threat radar perimeter...
             </div>
           ) : filteredFindings.length === 0 ? (
@@ -210,12 +238,12 @@ export default function ThreatRadarPage() {
                 <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <RiskScoreBadge score={f.riskScore} severity={f.severity} size="sm" />
-                    <span className="font-bold text-sentrix-text truncate">{f.title}</span>
+                    <span className="font-bold text-sentrix-text truncate privacy-sensitive">{f.title}</span>
                     <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-sentrix-card border border-sentrix-border text-sentrix-cyan">
                       {f.sourceModule}
                     </span>
                   </div>
-                  <p className="text-sentrix-muted truncate">{f.entityName}</p>
+                  <p className="text-sentrix-muted truncate font-mono text-[11px] privacy-sensitive">{f.entityName}</p>
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0">
@@ -224,6 +252,7 @@ export default function ThreatRadarPage() {
                   </span>
                   <Link
                     href={`/findings/${f.id}`}
+                    onClick={() => playCyberClick()}
                     className="text-xs font-semibold text-sentrix-cyan hover:underline flex items-center gap-1"
                   >
                     Dossier <ArrowRight className="w-3.5 h-3.5" />
@@ -237,4 +266,3 @@ export default function ThreatRadarPage() {
     </div>
   );
 }
-

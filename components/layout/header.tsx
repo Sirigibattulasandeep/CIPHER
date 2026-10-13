@@ -1,8 +1,10 @@
-"use client";
-
 import React, { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useBrand } from "@/lib/brand-context";
+import { usePrivacy } from "@/lib/privacy-context";
+import { playCyberClick } from "@/lib/sound";
+import { ConnectionPill } from "@/components/shared/server-resilience-banner";
+import { PwaInstallButton } from "@/components/pwa/pwa-controller";
 import { Role } from "@/types";
 import {
   Menu,
@@ -14,6 +16,9 @@ import {
   ShieldCheck,
   UserCheck,
   RotateCcw,
+  Eye,
+  EyeOff,
+  Compass,
 } from "lucide-react";
 
 interface HeaderProps {
@@ -21,6 +26,7 @@ interface HeaderProps {
   onOpenCommandPalette: () => void;
   onOpenNotifications: () => void;
   onOpenQuickAnalysis: () => void;
+  onOpenAppGuide?: () => void;
   unreadCount?: number;
 }
 
@@ -29,10 +35,12 @@ export function Header({
   onOpenCommandPalette,
   onOpenNotifications,
   onOpenQuickAnalysis,
+  onOpenAppGuide,
   unreadCount = 0,
 }: HeaderProps) {
   const { user, organization, setRole } = useAuth();
   const { brands, selectedBrandId, setSelectedBrandId } = useBrand();
+  const { isPrivacyMode, togglePrivacyMode } = usePrivacy();
 
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -118,7 +126,49 @@ export function Header({
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-2 sm:gap-2.5">
+        {/* Edge Server Health / Offline Status Pill */}
+        <ConnectionPill />
+
+        {/* PWA Cross-Platform Install Button */}
+        <PwaInstallButton />
+
+        {/* Interactive App Guide Launcher */}
+        {onOpenAppGuide && (
+          <button
+            onClick={() => {
+              playCyberClick();
+              onOpenAppGuide();
+            }}
+            title="Launch Interactive App Tour & Guide"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-sentrix-surface border border-sentrix-border text-xs text-sentrix-muted hover:text-sentrix-cyan hover:border-sentrix-borderLight transition-all"
+          >
+            <Compass className="w-3.5 h-3.5 text-sentrix-cyan" />
+            <span className="hidden xl:inline">App Guide</span>
+          </button>
+        )}
+
+        {/* Privacy Shield Mode (Alt+P) */}
+        <button
+          onClick={() => {
+            playCyberClick();
+            togglePrivacyMode();
+          }}
+          title={isPrivacyMode ? "Privacy Shield Active (Alt+P) - Click to unmask" : "Activate Privacy Shield (Alt+P) - Blur sensitive assets for demo"}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
+            isPrivacyMode
+              ? "bg-[#D7A93A]/15 border-[#D7A93A] text-[#F1C95D] shadow-[0_0_12px_rgba(215,169,58,0.25)]"
+              : "bg-sentrix-surface border-sentrix-border text-sentrix-muted hover:text-sentrix-text hover:border-sentrix-borderLight"
+          }`}
+        >
+          {isPrivacyMode ? (
+            <EyeOff className="w-3.5 h-3.5 text-[#D7A93A]" />
+          ) : (
+            <Eye className="w-3.5 h-3.5" />
+          )}
+          <span className="hidden lg:inline">{isPrivacyMode ? "Shield ON" : "Privacy"}</span>
+        </button>
+
         {/* Reset Demo DB button */}
         <button
           onClick={handleResetDemoDb}
@@ -132,7 +182,10 @@ export function Header({
 
         {/* Quick Threat Analysis Action */}
         <button
-          onClick={onOpenQuickAnalysis}
+          onClick={() => {
+            playCyberClick();
+            onOpenQuickAnalysis();
+          }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-sentrix-cyan to-sentrix-teal text-sentrix-bg text-xs font-bold shadow-glow-sm hover:brightness-110 cursor-pointer transition-all"
         >
           <Sparkles className="w-3.5 h-3.5 fill-current" />
@@ -141,7 +194,10 @@ export function Header({
 
         {/* Notifications Button */}
         <button
-          onClick={onOpenNotifications}
+          onClick={() => {
+            playCyberClick();
+            onOpenNotifications();
+          }}
           className="relative p-2 rounded-lg bg-sentrix-surface border border-sentrix-border text-sentrix-muted hover:text-sentrix-text hover:border-sentrix-borderLight transition-colors"
           title="Notifications"
         >
