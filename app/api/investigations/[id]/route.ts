@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const inv = db.getInvestigation(params.id);
+    const { id } = await params;
+    const inv = db.getInvestigation(id);
     if (!inv) {
       return NextResponse.json({ success: false, error: "Investigation not found." }, { status: 404 });
     }
@@ -18,10 +19,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = await req.json();
-    const updated = db.updateInvestigation(params.id, body);
+    const updated = db.updateInvestigation(id, body);
     if (!updated) {
       return NextResponse.json({ success: false, error: "Investigation not found." }, { status: 404 });
     }
@@ -30,4 +32,3 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
-

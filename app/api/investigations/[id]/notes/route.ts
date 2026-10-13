@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = await req.json();
     if (!body.text) {
       return NextResponse.json({ success: false, error: "Note text is required." }, { status: 400 });
     }
 
-    const updated = db.addInvestigationNote(params.id, {
+    const updated = db.addInvestigationNote(id, {
       author: body.author || "Marcus Kane",
       authorRole: body.authorRole || "Security Analyst",
       text: body.text,
@@ -23,4 +24,3 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
-

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import type { Route } from "next";
 import { Finding, Brand, Investigation } from "@/types";
 import {
   Search,
@@ -93,7 +94,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
 
   const navigateTo = (path: string) => {
     onClose();
-    router.push(path);
+    router.push(path as Route);
   };
 
   return (

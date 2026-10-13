@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "build": "next build",
-    "start": "node scripts/dev.mjs start",
+    "build": "prisma generate && next build",
+    "start": "next start",
     "lint": "eslint src tests scripts prisma/seed.js",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/analysis.test.js && vitest run tests",
@@ -27,6 +27,9 @@
     "recharts": "^2.13.3",
     "tailwind-merge": "^2.5.4",
     "zod": "^3.23.8"
+  },
+  "engines": {
+    "node": ">=20.9.0"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

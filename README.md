@@ -30,6 +30,33 @@ npm run dev
 
 The seed is repeatable and upserts three brands plus labeled simulated findings. `db:migrate` deploys the checked-in migrations; it does not reset or drop data. The second migration converts existing single-organization users into membership rows, adds tenant/brand constraints and query indexes, stores score breakdowns, and normalizes official aliases, keywords, domains, social accounts, and mobile apps from existing brand JSON fields.
 
+## Deploy from GitHub
+
+This repository includes provider configuration for both deployment options:
+
+- **Vercel:** import the GitHub repository as a Next.js project. Vercel uses `vercel.json`, runs `npm ci`, and builds with `npm run build`.
+- **Render:** create a Blueprint from the repository. `render.yaml` creates the web service and PostgreSQL database, runs checked-in Prisma migrations during deploy, and starts the app with `npm start`.
+
+### Vercel frontend + Render backend
+
+For a split deployment, deploy the repository to Render first using `render.yaml`. Copy the Render service's public URL, for example `https://sentrix-api.onrender.com`, into the Vercel project's `BACKEND_URL` environment variable. Vercel then proxies every `/api/*` browser request to Render through the rewrite in `next.config.mjs`; frontend code continues to use same-origin `/api/*` URLs and session cookies remain usable.
+
+On Vercel, set `BACKEND_URL` for Production, Preview, and Development environments as appropriate. Do not set `DATABASE_URL`, `SESSION_SECRET`, or `SENTRIX_LOGIN_*` on Vercel for this split mode; authentication and the database belong to the Render backend. On Render, keep `DATABASE_URL`, `SESSION_SECRET`, and login credentials configured. Redeploy Vercel after changing `BACKEND_URL`.
+
+Use the Render URL directly only for backend health checks such as `https://sentrix-api.onrender.com/api/health`. Use the Vercel URL for the user-facing application. If you do not need a split deployment, deploy only the Render service and leave `BACKEND_URL` empty.
+
+Set these production environment variables in the selected provider:
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `SESSION_SECRET` | Yes | At least 32 random characters for signed sessions |
+| `SENTRIX_LOGIN_EMAIL` | Yes | Application login email |
+| `SENTRIX_LOGIN_PASSWORD` | Yes | Application login password |
+| `GEMINI_API_KEY` | No | AI summary integration |
+
+Never commit `.env.local` or production credentials. After the first deploy, confirm the provider health check at `/api/health`, then sign in using the configured credentials. The production build generates Prisma Client automatically; Render applies migrations with `npm run db:migrate` before starting the service.
+
 The Prisma-backed repositories are organization-scoped and keep the existing Brand/Finding contracts. The current authentication helper still returns a fixed local demo organization, so the database adapter is suitable for local evaluation only until the team integrates authenticated sessions and membership checks. Do not deploy the current APIs as a multi-tenant service.
 
 ## Implemented workflows

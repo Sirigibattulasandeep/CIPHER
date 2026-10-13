@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import { usePathname } from "next/navigation";
 import {
   Shield,
@@ -31,7 +32,7 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const navItems = [
+  const navItems: { label: string; href: Route; icon: typeof LayoutDashboard; badge?: string }[] = [
     { label: "Overview", href: "/", icon: LayoutDashboard },
     { label: "Threat Radar", href: "/radar", icon: Radio },
     { label: "Brands", href: "/brands", icon: Layers },

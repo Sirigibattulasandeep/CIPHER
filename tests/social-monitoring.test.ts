@@ -249,7 +249,7 @@ describe('shared findings persistence', () => {
     expect(brands.map(item => item.industry)).toEqual(expect.arrayContaining(['EDTECH', 'FINTECH', 'ECOMMERCE']));
     await store.createBrand({
       name: 'Test Brand', aliases: [], description: '', logoUrl: '', industry: 'TECHNOLOGY_SAAS', subcategory: '',
-      websiteUrl: '', domains: [], socialProfiles: [], keywords: [], impersonationIndicators: [], mobileApplications: [],
+      websiteUrl: '', domains: [], socialProfiles: [], keywords: [], impersonationIndicators: [], mobileApplications: [], officialAssets: [],
       monitoringConfiguration: { enabled: true, modules: ['social'], rules: [], frequency: 'daily' },
     });
     expect((await store.listBrands()).length).toBe(4);

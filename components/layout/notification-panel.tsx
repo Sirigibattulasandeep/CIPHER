@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import type { Route } from "next";
 import { AppNotification } from "@/types";
 import { formatTimeAgo, getSeverityBadgeClass } from "@/lib/utils";
 import { X, Bell, CheckCheck, ShieldAlert, ArrowRight } from "lucide-react";
@@ -157,7 +158,7 @@ export function NotificationPanel({
                     )}
                     {item.link && (
                       <Link
-                        href={item.link}
+                        href={item.link as Route}
                         onClick={onClose}
                         className="ml-auto text-[11px] font-semibold text-sentrix-cyan hover:underline flex items-center gap-1"
                       >
@@ -174,4 +175,3 @@ export function NotificationPanel({
     </div>
   );
 }
-

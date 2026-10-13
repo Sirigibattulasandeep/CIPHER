@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: sentrix
+    runtime: node
+    plan: starter
+    buildCommand: npm ci && npm run build
+    preDeployCommand: npm run db:migrate
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sentrix-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SENTRIX_LOGIN_EMAIL
+        sync: false
+      - key: SENTRIX_LOGIN_PASSWORD
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+
+databases:
+  - name: sentrix-db
+    plan: starter

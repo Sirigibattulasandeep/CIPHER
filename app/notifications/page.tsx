@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import type { Route } from "next";
 import Link from "next/link";
 import { AppNotification } from "@/types";
 import { getSeverityBadgeClass, formatTimeAgo, formatTimestamp } from "@/lib/utils";
@@ -202,7 +203,7 @@ export default function NotificationsPage() {
                 )}
                 {n.link && (
                   <Link
-                    href={n.link}
+                    href={n.link as Route}
                     className="px-3.5 py-1.5 rounded-lg bg-sentrix-surface border border-sentrix-border hover:border-sentrix-cyan text-xs font-semibold text-sentrix-cyan flex items-center gap-1 transition-colors"
                   >
                     <span>View Dossier</span> <ArrowRight className="w-3.5 h-3.5" />
@@ -216,4 +217,3 @@ export default function NotificationsPage() {
     </div>
   );
 }
-

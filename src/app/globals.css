@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@config "../tailwind.config.cjs";
 
 @theme {
   --color-ink: #08111f;

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const finding = db.getFinding(params.id);
+    const { id } = await params;
+    const finding = db.getFinding(id);
     if (!finding) {
       return NextResponse.json({ success: false, error: "Finding not found." }, { status: 404 });
     }
@@ -13,10 +14,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = await req.json();
-    const updated = db.updateFinding(params.id, body);
+    const updated = db.updateFinding(id, body);
     if (!updated) {
       return NextResponse.json({ success: false, error: "Finding not found." }, { status: 404 });
     }
@@ -26,9 +28,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const deleted = db.deleteFinding(params.id);
+    const { id } = await params;
+    const deleted = db.deleteFinding(id);
     if (!deleted) {
       return NextResponse.json({ success: false, error: "Finding not found." }, { status: 404 });
     }
@@ -37,4 +40,3 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
-

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = await req.json();
     if (!body.title || !body.target || !body.type) {
       return NextResponse.json(
@@ -11,7 +12,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       );
     }
 
-    const updated = db.addResponseAction(params.id, {
+    const updated = db.addResponseAction(id, {
       type: body.type,
       title: body.title,
       target: body.target,
@@ -28,8 +29,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = await req.json();
     if (!body.actionId || !body.status) {
       return NextResponse.json(
@@ -38,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       );
     }
 
-    const updated = db.updateResponseActionStatus(params.id, body.actionId, body.status);
+    const updated = db.updateResponseActionStatus(id, body.actionId, body.status);
     if (!updated) {
       return NextResponse.json({ success: false, error: "Action or Investigation not found." }, { status: 404 });
     }
@@ -48,4 +50,3 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
-
