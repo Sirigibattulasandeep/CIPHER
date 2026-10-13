@@ -49,19 +49,19 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
   ];
 
   const content = (
-    <div className="flex flex-col h-full bg-sentrix-surface border-r border-sentrix-border">
+    <div className="flex h-full flex-col border-r border-indigo-400/15 bg-[#0a1020]">
       {/* Brand Header */}
-      <div className="flex items-center justify-between p-4 border-b border-sentrix-border h-16">
+      <div className="flex h-16 items-center justify-between border-b border-indigo-400/15 px-3">
         <Link href="/" className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sentrix-cyan to-emerald-400 flex items-center justify-center text-sentrix-bg shadow-glow-sm shrink-0">
-            <Shield className="w-5 h-5 fill-current stroke-sentrix-bg stroke-2" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-300 to-indigo-400 text-[#08101d] shadow-[0_0_16px_rgba(103,232,249,0.2)]">
+            <Shield className="h-5 w-5 fill-current stroke-[#08101d] stroke-2" />
           </div>
           {!isCollapsed && (
             <div className="flex flex-col">
-              <span className="font-extrabold text-base tracking-wider text-sentrix-text">
+              <span className="text-base font-extrabold tracking-wider text-slate-100">
                 SENTRIX
               </span>
-              <span className="text-[10px] font-mono text-sentrix-cyan tracking-tight">
+              <span className="font-mono text-[10px] tracking-tight text-cyan-300">
                 CIPHER • HacXLerate
               </span>
             </div>
@@ -69,7 +69,9 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
         </Link>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex p-1.5 rounded-lg text-sentrix-muted hover:text-sentrix-text hover:bg-sentrix-card transition-colors"
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-pressed={isCollapsed}
+          className="hidden rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-indigo-400/10 hover:text-cyan-200 md:flex"
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -77,7 +79,7 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
       </div>
 
       {/* Nav List */}
-      <div className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+      <nav aria-label="Primary navigation" className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
         {navItems.map((item) => {
           const isActive =
             item.href === "/"
@@ -90,16 +92,16 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
               key={item.href}
               href={item.href}
               onClick={() => setIsMobileOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all group ${
+              className={`group flex items-center gap-3 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
                 isActive
-                  ? "bg-sentrix-card text-sentrix-cyan border border-sentrix-cyan/40 shadow-sm"
-                  : "text-sentrix-muted hover:text-sentrix-text hover:bg-sentrix-card/60"
+                  ? "border-cyan-300/35 bg-cyan-300/10 text-cyan-200 shadow-[inset_3px_0_0_#67e8f9]"
+                  : "border-transparent text-slate-400 hover:border-indigo-300/15 hover:bg-indigo-400/10 hover:text-slate-100"
               }`}
               title={isCollapsed ? item.label : undefined}
             >
               <Icon
                 className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
-                  isActive ? "text-sentrix-cyan" : "text-sentrix-subtle"
+                  isActive ? "text-cyan-300" : "text-slate-500"
                 }`}
               />
               {!isCollapsed && <span className="truncate">{item.label}</span>}
@@ -111,30 +113,30 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
             </Link>
           );
         })}
-      </div>
+      </nav>
 
       {/* Live Monitoring Indicator */}
       {!isCollapsed && (
-        <div className="p-3 m-3 rounded-lg bg-sentrix-card border border-sentrix-border">
+        <div className="m-2 rounded-lg border border-indigo-300/15 bg-indigo-400/[0.07] p-3">
           <div className="flex items-center gap-2 mb-1">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
             </span>
-            <span className="text-[11px] font-semibold text-sentrix-text">
+            <span className="text-[11px] font-semibold text-slate-200">
               Realtime Shield
             </span>
           </div>
-          <p className="text-[10px] text-sentrix-muted leading-tight">
+          <p className="text-[10px] leading-tight text-slate-400">
             Continuous threat telemetry active across perimeter channels.
           </p>
         </div>
       )}
 
       {/* Footer System Status */}
-      <div className="p-3 border-t border-sentrix-border text-[10px] text-sentrix-subtle flex items-center justify-between">
+      <div className="flex items-center justify-between border-t border-indigo-400/15 p-3 text-[10px] text-slate-500">
         {!isCollapsed && <span>SENTRIX v1.0 • Enterprise DRP</span>}
-        <Radio className="w-3.5 h-3.5 text-sentrix-cyan animate-pulseSubtle" />
+        <Radio className="h-3.5 w-3.5 animate-pulseSubtle text-cyan-300" />
       </div>
     </div>
   );
@@ -143,11 +145,14 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
     <>
       {/* Desktop Persistent Sidebar */}
       <aside
-        className={`hidden md:block shrink-0 transition-all duration-200 z-30 ${
-          isCollapsed ? "w-16" : "w-64"
+        className={`hidden shrink-0 transition-[width] duration-200 md:block ${
+          isCollapsed ? "w-[4.5rem]" : "w-[13.75rem]"
         }`}
       >
-        <div className="fixed top-0 bottom-0 left-0 w-inherit z-30">
+        <div
+          className="fixed bottom-0 left-0 top-0 z-30"
+          style={{ width: isCollapsed ? "4.5rem" : "13.75rem" }}
+        >
           {content}
         </div>
       </aside>
@@ -159,7 +164,7 @@ export function Sidebar({ isMobileOpen, setIsMobileOpen }: SidebarProps) {
             className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
             onClick={() => setIsMobileOpen(false)}
           />
-          <div className="relative w-64 max-w-[80vw] h-full shadow-2xl z-50">
+          <div className="relative z-50 h-full w-[13.75rem] max-w-[80vw] shadow-2xl">
             {content}
           </div>
         </div>
